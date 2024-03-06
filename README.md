@@ -529,3 +529,16 @@ sh alertmanager.sh hosts install
 sh node_exporter.sh hosts install
 sh telegraf.sh hosts install
 ```
+
+##服务情况
+### 部署架构图
+![avatar](image/3841709692144_.pic.jpg)
+
+### grafana大盘
+![avatar](image/3761709633700_.pic.jpg)
+![avatar](image/3781709633777_.pic.jpg)
+![avatar](image/3801709633845_.pic.jpg)
+
+### 告警
+![avatar](image/3811709690242_.pic.jpg)
+![avatar](image/3831709690376_.pic.jpg/)
