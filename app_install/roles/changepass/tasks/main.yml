@@ -1,0 +1,4 @@
+- name: change user passwd custom
+  user: name={{ item.user }} password={{ item.password | password_hash('sha512') }}  update_password=always
+  with_items:
+  - { user: '{{changepass_user}}', password: '{{changepass_password}}' }

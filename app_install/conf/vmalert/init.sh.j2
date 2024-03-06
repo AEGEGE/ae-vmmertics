@@ -1,0 +1,25 @@
+#!/bin/bash
+  cd `dirname $0`
+  docker info >/dev/nul 2>&1
+  if [ "$?" != "0" ]
+  then
+    echo start dockerd
+    systemctl start docker
+  sleep 1
+  fi
+  sleep 1
+  docker inspect {{service_name}} >/dev/nul 2>&1
+  if [ "$?" != "0" ]
+  then
+    docker load -i {{work_dir}}/vmalert.tgz
+    if [ {{vmagent_count}} -gt 1 ]
+    then
+      docker run -d --restart=always --name {{service_name}} --network host \
+        -v {{work_dir}}/alerts:/etc/alerts \
+        {{vmalert_image}} --httpListenAddr={{vmalert_Listen}} --loggerTimezone={{vm_logtz}} --loggerFormat={{vm_loggerFormat}} --rule=/etc/alerts/*.yml --datasource.url=http://{{vm_vip}}{{vmauth_Listen}}/select/0/prometheus --datasource.basicAuth.username={{vmauth_select_user}} --datasource.basicAuth.password={{vmauth_pass}} --remoteRead.url=http://{{vm_vip}}{{vmauth_Listen}}/select/0/prometheus --remoteRead.basicAuth.username={{vmauth_select_user}} --remoteRead.basicAuth.password={{vmauth_pass}} --remoteWrite.url=http://{{vm_vip}}{{vmauth_Listen}}/insert/0/prometheus --remoteWrite.basicAuth.username={{vmauth_insert_user}} --remoteWrite.basicAuth.password={{vmauth_pass}} {{vmalert_to_manager}}
+    else
+      docker run -d --restart=always --name {{service_name}} --network host \
+        -v {{work_dir}}/alerts:/etc/alerts \
+        {{vmalert_image}} --httpListenAddr={{vmalert_Listen}} --loggerTimezone={{vm_logtz}} --loggerFormat={{vm_loggerFormat}} --rule=/etc/alerts/*.yml --datasource.url=http://{{groups['vmauth'][0]}}{{vmauth_Listen}}/select/0/prometheus --datasource.basicAuth.username={{vmauth_select_user}} --datasource.basicAuth.password={{vmauth_pass}} --remoteRead.url=http://{{groups['vmauth'][0]}}{{vmauth_Listen}}/select/0/prometheus --remoteRead.basicAuth.username={{vmauth_select_user}} --remoteRead.basicAuth.password={{vmauth_pass}} --remoteWrite.url=http://{{groups['vmauth'][0]}}{{vmauth_Listen}}/insert/0/prometheus --remoteWrite.basicAuth.username={{vmauth_insert_user}} --remoteWrite.basicAuth.password={{vmauth_pass}} --notifier.url=http://{{groups['alertmanager'][0]}}:{{alertmanagers_port}}/
+    fi
+  fi

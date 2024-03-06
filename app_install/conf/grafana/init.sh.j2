@@ -1,0 +1,24 @@
+#!/bin/bash
+  cd `dirname $0`
+  docker info >/dev/nul 2>&1
+  if [ "$?" != "0" ]
+  then
+    echo start dockerd
+    systemctl start docker
+  sleep 1
+  fi
+  sleep 1
+  docker inspect {{service_name}} >/dev/nul 2>&1
+  if [ "$?" != "0" ]
+  then
+    docker load -i {{work_dir}}/grafana.tgz
+    docker run -d --restart=always --name {{service_name}} --network host \
+      -v /etc/localtime:/etc/localtime:ro \
+      -e "GF_SECURITY_ADMIN_PASSWORD={{ GF_SECURITY_ADMIN_PASSWORD }}" \
+      -v /etc/localtime:/etc/localtime:ro \
+      -v {{work_dir}}/data:/var/lib/grafana \
+      -v {{work_dir}}/config/grafana.ini:/etc/grafana/grafana.ini \
+      -v {{work_dir}}/config/ldap.toml:/etc/grafana/ldap.toml \
+      -v {{work_dir}}/config/provisioning:/etc/grafana/provisioning \
+      {{grafana_image}}
+  fi

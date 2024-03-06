@@ -1,0 +1,7 @@
+- hosts: postgres
+  gather_facts: true
+  vars:
+    ansible_ssh_pass: "{{server_password}}"
+    install_type: "{{ ins }}"
+  roles:
+  - postgres

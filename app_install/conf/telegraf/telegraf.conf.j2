@@ -1,0 +1,46 @@
+[agent]
+interval = "{{telegraf_interval}}" # 采集（拨测）间隔
+round_interval = false
+metric_batch_size = 1000
+metric_buffer_limit = 10000
+collection_jitter = "1s"
+flush_interval = "20s"
+flush_jitter = "1s"
+precision = "1s"
+debug = true
+quiet = false
+logtarget = ""
+logfile_rotation_interval = "1d"
+logfile_rotation_max_archives = 5
+hostname = ""
+omit_hostname = true
+
+[[outputs.influxdb_v2]]
+ urls = [{{telegraf_output_vmagent}}] 
+
+[[outputs.prometheus_client]]
+ listen = ":9273"
+
+[[inputs.http_response]]
+ urls = [ {{telegrafa_monit_grafana}} ]
+ method = "GET"
+ response_timeout = "3"
+ insecure_skip_verify = true
+ [inputs.http_response.tags]
+    service_name = "grafana的web服务"
+
+[[inputs.http_response]]
+ urls = [ {{telegrafa_monit_promealert}} ]
+ method = "GET"
+ response_timeout = "3"
+ insecure_skip_verify = true
+ [inputs.http_response.tags]
+    service_name = "promealert告警服务"
+
+[[inputs.http_response]]
+ urls = [ {{telegrafa_monit_alertmanager}} ]
+ method = "GET"
+ response_timeout = "3"
+ insecure_skip_verify = true
+ [inputs.http_response.tags]
+    service_name = "alertmanager服务"

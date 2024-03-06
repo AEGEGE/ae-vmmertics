@@ -1,0 +1,37 @@
+#!/bin/bash
+  cd `dirname $0`
+  docker info >/dev/nul 2>&1
+  if [ "$?" != "0" ]
+  then
+    echo start dockerd
+    systemctl start docker
+  sleep 1
+  fi
+  sleep 1
+  docker inspect {{service_name}} >/dev/nul 2>&1
+  if [ "$?" != "0" ]
+  then
+    docker load -i {{work_dir}}/promealert.tgz
+    docker run -d --restart=always --name {{service_name}} --network host \
+      -v /etc/localtime:/etc/localtime:ro \
+      -e PA_LOGIN_USER="{{PA_LOGIN_USER}}" \
+      -e PA_LOGIN_PASSWORD="{{PA_LOGIN_PASSWORD}}" \
+      -e PA_TITLE="{{PA_TITLE}}" \
+      -e PA_OPEN_FEISHU="{{PA_OPEN_FEISHU}}" \
+      -e PA_OPEN_DINGDING="{{PA_OPEN_DINGDING}}" \
+      -e PA_OPEN_WEIXIN="{{PA_OPEN_WEIXIN}}" \
+      -v {{work_dir}}/db:/app/db \
+      -v {{work_dir}}/logs:/app/logs \
+      -v {{work_dir}}/conf:/app/conf \
+      {{promealert_image}}
+  fi
+
+  #install prometheus-alert wx custom
+  sleep 30
+  ss -tnlp |grep {{PA_PORT}}
+  if [ "$?" == "0" ]
+  then
+    cd {{work_dir}}/ && curl -X POST http://{{inventory_hostname}}:{{PA_PORT}}/template/import -d @prome-wx-custom.json
+  else
+    echo "import failed"
+  fi

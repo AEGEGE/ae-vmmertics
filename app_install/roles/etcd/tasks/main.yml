@@ -1,0 +1,85 @@
+- name: alias hosts
+  lineinfile:
+    dest: "/etc/hosts"
+    regexp: "{{item}}"
+    line: "{{item}}"
+  with_items:
+  - "{{etcd_hosts_entries}}"
+  when: install_type == "install" and inventory_hostname in groups['etcd']
+
+- name: alias hostname
+  shell: "hostnamectl set-hostname {{hostname}}"
+  when: install_type == "install" and inventory_hostname in groups['etcd']
+
+- name: prepare work dirs
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: 0755
+    owner: "root"
+    group: "root"
+  with_items:
+  - "{{ work_dir }}"
+  - "{{ work_dir +'/config'}}"
+  - "{{ work_dir +'/etcd'}}"
+  when: install_type == "install"
+ 
+- name: send bin files
+  unarchive:
+    dest: "/usr/bin/"
+    src: "{{pkg_dir}}/{{item}}"
+    mode: 0755
+    force: no
+  with_items:
+  - "{{etcd_image}}"
+  when: install_type == "install" and inventory_hostname in groups['etcd']
+
+- name: template Cluster config
+  template:
+     dest: "{{work_dir}}/config/{{item}}"
+     src: "{{conf_dir}}/{{item}}.j2"
+  with_items:
+  - "etcd.conf"
+  when: install_type == "install" and inventory_hostname in groups['etcd']
+
+- name: template systemd service
+  template:
+     dest: "/etc/systemd/system/{{item}}"
+     src: "{{conf_dir}}/{{item}}.j2"
+  with_items:
+  - "etcd.service"
+  when: install_type == "install" and inventory_hostname in groups['etcd']
+
+- name: start software
+  systemd:
+    daemon_reload: yes
+    enabled: true
+    state: restarted
+    name: 'etcd'
+  when: install_type == "install" and inventory_hostname in groups['etcd']
+
+- name: predel check systemd
+  shell: systemctl status etcd >/dev/null 2>&1
+  register: etcd_system
+  failed_when: "'command not found' in etcd_system.stderr"
+  when: install_type == "delete" and inventory_hostname in groups['etcd']
+
+- name: stopped systemd
+  when: install_type == "delete" and inventory_hostname in groups['etcd'] and etcd_system.rc == 0
+  systemd:
+    enabled: false
+    state: stopped
+    name: 'etcd'
+
+- name: delete hosts
+  lineinfile:
+    dest: "/etc/hosts"
+    regexp: "^{{item}}"
+    state: absent
+  with_items:
+  - "{{etcd_hosts_entries}}"
+  when: install_type == "delete" and inventory_hostname in groups['etcd']
+
+- name: clean workdir
+  shell: "rm -rf {{ work_dir }}"
+  when: install_type == "delete"

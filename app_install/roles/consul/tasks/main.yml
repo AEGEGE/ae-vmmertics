@@ -1,0 +1,7 @@
+- include_tasks: node.yml
+  vars:
+    node_name: "consul-{{cur_crole}}"
+    work_dir: "{{install_path}}/{{name_prefix}}-{{node_name}}"
+  with_items: "{{ crole.split(',') }}"
+  loop_control:
+    loop_var: cur_crole

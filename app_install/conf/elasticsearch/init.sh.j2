@@ -1,0 +1,68 @@
+#!/bin/bash
+cluster_type={{cluster_type}}
+echo $cluster_type >> /tmp/init_es.log
+if [ ${cluster_type} == cluster ]
+then
+  cd `dirname $0`
+  docker info >/dev/nul 2>&1
+  if [ "$?" != "0" ]
+  then
+    echo start dockerd
+    systemctl start docker
+  sleep 1
+  fi
+  sleep 1
+  docker start {{service_name}} >/dev/nul 2>&1
+  if [ "$?" != "0" ]
+  then
+    docker load -i {{work_dir}}/elasticsearch.tgz
+    docker run -d --restart=always --privileged=true --name {{service_name}} --network host \
+        --ulimit nofile=65536:65536 \
+        --ulimit memlock=-1 \
+        -v "{{work_dir}}/data":/usr/share/elasticsearch/data \
+        -v "{{work_dir}}/logs":/usr/share/elasticsearch/logs \
+        -v "{{work_dir}}/plugins":/usr/share/elasticsearch/plugins \
+        -v "{{work_dir}}/es_plugins":/opt/es_plugins \
+        -v "{{work_dir}}/config/elasticsearch.yml":/usr/share/elasticsearch/config/elasticsearch.yml \
+        -v "{{work_dir}}/config/role_mapping.yml":/usr/share/elasticsearch/config/role_mapping.yml \
+        -v "{{work_dir}}/config/sslkey":/usr/share/elasticsearch/config/sslkey \
+        -v "/etc/localtime":/etc/localtime:ro \
+        -e LANG=en_US.utf8 \
+        -e "bootstrap.memory_lock=false" \
+        -e ES_JAVA_OPTS="{{ES_JAVA_OPTS}}" \
+        {{es_image}}
+    sleep 60
+  fi
+else
+  cd `dirname $0`
+  docker info >/dev/nul 2>&1
+  if [ "$?" != "0" ]
+  then
+    echo start dockerd
+    systemctl start docker
+  sleep 1
+  fi
+  sleep 1
+  docker start {{service_name}} >/dev/nul 2>&1
+  if [ "$?" != "0" ]
+  then
+    docker load -i {{work_dir}}/elasticsearch.tgz
+    docker run -d --restart=always --privileged=true --name {{service_name}} --network host \
+        --ulimit nofile=65536:65536 \
+        --ulimit memlock=-1 \
+        -v "{{work_dir}}/data":/usr/share/elasticsearch/data \
+        -v "{{work_dir}}/logs":/usr/share/elasticsearch/logs \
+        -v "{{work_dir}}/plugins":/usr/share/elasticsearch/plugins \
+        -v "{{work_dir}}/es_plugins":/opt/es_plugins \
+        -v "{{work_dir}}/config/elasticsearch.yml":/usr/share/elasticsearch/config/elasticsearch.yml \
+        -v "{{work_dir}}/config/role_mapping.yml":/usr/share/elasticsearch/config/role_mapping.yml \
+        -v "{{work_dir}}/config/sslkey":/usr/share/elasticsearch/config/sslkey \
+        -v "/etc/localtime":/etc/localtime:ro \
+        -e LANG=en_US.utf8 \
+        -e "discovery.type=single-node" \
+        -e "bootstrap.memory_lock=false" \
+        -e ES_JAVA_OPTS="{{ES_JAVA_OPTS}}" \
+        {{es_image}}
+    sleep 60
+  fi
+fi

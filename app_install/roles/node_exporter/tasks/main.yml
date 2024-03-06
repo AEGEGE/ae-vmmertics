@@ -1,0 +1,97 @@
+- name: prepare some dirs
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: 0755
+  with_items:
+  - "{{ work_dir }}"
+  when: install_type == "install"
+
+- name: scp node_exporter files
+  copy:
+    dest: "{{ work_dir }}"
+    src: "{{pkg_dir}}/{{item}}"
+    mode: 0755
+  with_items:
+  - "node_exporter"
+  when: install_type == "install"
+
+- name: scp crt files
+  copy:
+    dest: "{{ work_dir }}"
+    src: "{{pkg_dir}}/sslkey/{{item}}"
+    mode: 0755
+  with_items:
+  - "{{SERVER_PRIVATEKEY}}"
+  - "{{SERVER_CRT}}"
+  when: install_type == "install" and node_exporter_tls == "true"
+
+- name: template node_exporter.service systemd
+  template:
+    dest: "/etc/systemd/system/{{service_name}}.service"
+    src: "{{conf_dir}}/node_exporter.service.j2"
+  when: install_type == "install"
+
+- name: Generate bcrypt hash using password_hash filter
+  set_fact:
+    node_exporter_auth: "{{ node_exporter_passwd | password_hash('bcrypt') }}"
+  when: install_type == "install"
+
+- name: template web.yml systemd
+  template:
+    dest: "{{ work_dir }}/web.yml"
+    src: "{{conf_dir}}/web.yml.j2"
+  when: install_type == "install"
+
+#tls_server_config:
+###cert_file: {{SERVER_CRT}}
+###key_file: {{SERVER_PRIVATEKEY}}
+
+- name: enable tls
+  lineinfile:
+    dest: "{{ work_dir }}/web.yml"
+    regexp: "^#tls_server_config:"
+    line: "tls_server_config:"
+  when: install_type == "install" and node_exporter_tls == "true"
+
+- name: enable tls
+  lineinfile:
+    dest: "{{ work_dir }}/web.yml"
+    regexp: "^###cert_file"
+    line: "  cert_file: {{SERVER_CRT}}"
+  when: install_type == "install" and node_exporter_tls == "true"
+
+- name: enable tls
+  lineinfile:
+    dest: "{{ work_dir }}/web.yml"
+    regexp: "###key_file"
+    line: "  key_file: {{SERVER_PRIVATEKEY}}"
+  when: install_type == "install" and node_exporter_tls == "true"
+
+- name: template node_exporter.sh systemd
+  template:
+    dest: "/opt/{{service_name}}.sh"
+    src: "{{conf_dir}}/node_exporter.sh.j2"
+  when: install_type == "install"
+
+- name: "started node_exporter"
+  systemd:
+    name: "{{service_name}}"
+    daemon_reload: yes
+    state: started
+    enabled: True
+  when: install_type == "install"
+
+- name: "join into consul"
+  shell: "/bin/bash /opt/{{service_name}}.sh"
+  when: install_type == "install"
+
+- name: stop all "{{service_name}}"
+  shell: "systemctl stop {{service_name}}"
+  ignore_errors: true
+  when: install_type == "delete"
+
+- name: clean all {{service_name}} data
+  shell: "rm -f /etc/systemd/system/{{service_name}}.service"
+  ignore_errors: true
+  when: install_type == "delete"

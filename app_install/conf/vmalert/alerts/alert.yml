@@ -1,0 +1,450 @@
+groups:
+  - name: node-exporter
+    interval: 15s
+    rules:
+    - expr: up{job=~"node-exporter"} != 1
+      alert: node_exporter:up
+      labels:        
+        unit: " "
+        job: "node-exporter"
+        severity: critical
+        level: "3"
+      annotations:
+        triggervalue: "{{ $value }}"
+        summary: "{{ $labels.instance }} 节点异常宕机,节点应用:{{ $labels.appname }},节点配置:{{ $labels.specs }}" 
+        description: "节点是否在线, 在线1,不在线0"
+
+    - expr: (time() - node_boot_time_seconds{})/60/60/24 > 1095
+      alert: node_exporter:node_uptime
+      labels: 
+        unit: "s"
+        severity: information
+        level: "1"
+        job: "node-exporter"
+      annotations:
+        triggervalue: "{{ $value }}"
+        summary: "{{ $labels.instance }} 节点连续运行时间已经超过1095天"  
+        description: "节点连续运行时间已经超过1095天"
+
+##############################################################################################
+#                              cpu                                                           #
+    - expr: (1 - avg by (instance,group,appname,dc,specs) (irate(node_cpu_seconds_total{job="node-exporter",mode="idle"}[5m]))) * 100 > 80 
+      alert: node_exporter:cpu:total:percent
+      for: 1m
+      labels: 
+        unit: "%"
+        job: "node-exporter"
+        severity: warning
+        level: "2"
+      annotations:
+        triggervalue: "{{ $value }}"
+        summary: "{{ $labels.instance }} 节点CPU使用率平均5分钟超过80%,节点应用:{{ $labels.appname }},节点配置:{{ $labels.specs }}"
+        description: "节点的cpu总消耗百分比"
+
+    - expr: (avg by (instance,group,appname,dc,specs) (irate(node_cpu_seconds_total{job="node-exporter",mode="iowait"}[30m]))) * 100 > 20
+      alert: node_exporter:cpu:iowait:percent
+      for: 1m
+      labels: 
+        unit: "%"
+        job: "node-exporter"
+        severity: warning
+        level: "2"
+      annotations:
+        triggervalue: "{{ $value }}"
+        summary: "服务{{ $labels.appname }} at {{ $labels.instance }} 节点CPU iowait平均30分钟超过20%,节点应用:{{ $labels.appname }},节点配置:{{ $labels.specs }}"
+        description: "节点的cpu iowait百分比"
+
+    - expr: avg by (instance,group,appname,dc,specs)(irate(node_cpu_seconds_total{mode=~"irq"}[5m])) * 100 > 10
+      alert: node_exporter:cpu:irq:percent
+      labels:
+        unit: "%"
+        job: "node-exporter"
+        severity: warning
+        level: "2"
+      annotations:
+        triggervalue: "{{ $value }}"
+        summary: "{{ $labels.instance }} 节点CPU中断平均5分钟超过10%,节点应用:{{ $labels.appname }},节点配置:{{ $labels.specs }}"
+        description: "节点的cpu 中断百分比"
+
+    - expr: avg by (instance,group,appname,dc,specs)(irate(node_cpu_seconds_total{mode=~"steal"}[5m])) * 100 > 10
+      alert: node_exporter:cpu:irq:percent
+      labels:
+        unit: "%"
+        job: "node-exporter"
+        severity: warning
+        level: "2"
+      annotations:
+        triggervalue: "{{ $value }}"
+        summary: "{{ $labels.instance }} 节点宿主机超分比较严重cpu steal超过10%,节点应用:{{ $labels.appname }},节点配置:{{ $labels.specs }}"
+        description: "节点的cpu 中断百分比"
+
+##############################################################################################
+
+
+##############################################################################################
+#                                    memory                                                  #
+    - expr: (node_memory_MemTotal_bytes{job="node-exporter"} - node_memory_MemAvailable_bytes{job="node-exporter"} - node_memory_MemFree_bytes{job="node-exporter"})/node_memory_MemTotal_bytes{job="node-exporter"}*100 > 85
+      alert: node_exporter:memory:actualused
+      labels: 
+        unit: byte
+        job: "node-exporter"
+        severity: warning
+        level: "2"
+      annotations:
+        triggervalue: "{{ $value }}"
+        summary: "{{ $labels.instance }} 节点内存使用量超过85%,节点应用:{{ $labels.appname }},节点配置:{{ $labels.specs }}"
+        description: "节点用户实际使用的内存量"
+##############################################################################################
+#                                   load                                                     #
+    - expr: sum by (instance,group,appname,dc,specs) (node_load1{job="node-exporter",specs="8c16g"}) > 5
+      alert: node_exporter:load:load1
+      for: 60s
+      labels: 
+        unit: " "
+        job: "node-exporter"
+        severity: warning
+        level: "2"
+      annotations:
+        triggervalue: "{{ $value }}"
+        summary: "{{ $labels.instance }} 节点1分钟平均负载大于8,节点应用:{{ $labels.appname }},节点配置:{{ $labels.specs }}"
+        description: "系统1分钟负载"
+
+    - expr: sum by (instance,group,appname,dc,specs) (node_load1{job="node-exporter",specs="8c32g"}) > 8
+      alert: node_exporter:load:load1
+      for: 300s
+      labels: 
+        unit: " "
+        job: "node-exporter"
+        severity: warning
+        level: "2"
+      annotations:
+        triggervalue: "{{ $value }}"
+        summary: "{{ $labels.instance }} 节点1分钟平均负载大于8,节点应用:{{ $labels.appname }},节点配置:{{ $labels.specs }}"
+        description: "系统1分钟负载"
+
+    - expr: sum by (instance,group,appname,dc,specs) (node_load1{job="node-exporter",specs="12c24g"}) > 12
+      alert: node_exporter:load:load1
+      for: 60s
+      labels: 
+        unit: " "
+        job: "node-exporter"
+        severity: warning
+        level: "2"
+      annotations:
+        triggervalue: "{{ $value }}"
+        summary: "{{ $labels.instance }} 节点1分钟平均负载大于12,节点应用:{{ $labels.appname }},节点配置:{{ $labels.specs }}"
+        description: "系统1分钟负载"
+
+    - expr: sum by (instance,group,appname,dc,specs) (node_load1{job="node-exporter",specs="32c64g"}) > 32
+      alert: node_exporter:load:load1
+      for: 300s
+      labels: 
+        unit: " "
+        job: "node-exporter"
+        severity: warning
+        level: "2"
+      annotations:
+        triggervalue: "{{ $value }}"
+        summary: "{{ $labels.instance }} 节点1分钟平均负载大于32,节点应用:{{ $labels.appname }},节点配置:{{ $labels.specs }}"
+        description: "系统1分钟负载"
+
+    - expr: sum by (instance,group,appname,dc,specs) (node_load1{job="node-exporter",specs="32c128g"}) > 32
+      alert: node_exporter:load:load1
+      for: 60s
+      labels: 
+        unit: " "
+        job: "node-exporter"
+        severity: warning
+        level: "2"
+      annotations:
+        triggervalue: "{{ $value }}"
+        summary: "{{ $labels.instance }} 节点1分钟平均负载大于32,节点应用:{{ $labels.appname }},节点配置:{{ $labels.specs }}"
+        description: "系统1分钟负载"
+
+    - expr: sum by (instance,group,appname,dc,specs) (node_load5{job="node-exporter",specs="8c16g"}) > 8
+      alert: node_exporter:load:load5
+      for: 60s
+      labels: 
+        unit: " "
+        job: "node-exporter"
+        severity: warning
+        level: "2"
+      annotations:
+        triggervalue: "{{ $value }}"
+        summary: "{{ $labels.instance }} 节点1分钟平均负载大于8,节点应用:{{ $labels.appname }},节点配置:{{ $labels.specs }}"
+        description: "系统5分钟负载"
+    
+    - expr: sum by (instance,group,appname,dc,specs) (node_load5{job="node-exporter",specs="8c32g"}) > 8
+      alert: node_exporter:load:load5
+      for: 300s
+      labels: 
+        unit: " "
+        job: "node-exporter"
+        severity: warning
+        level: "2"
+      annotations:
+        triggervalue: "{{ $value }}"
+        summary: "{{ $labels.instance }} 节点1分钟平均负载大于8,节点应用:{{ $labels.appname }},节点配置:{{ $labels.specs }}"
+        description: "系统5分钟负载"
+
+    - expr: sum by (instance,group,appname,dc,specs) (node_load5{job="node-exporter",specs="12c24g"}) > 12
+      alert: node_exporter:load:load5
+      for: 60s
+      labels: 
+        unit: " "
+        job: "node-exporter"
+        severity: warning
+        level: "2"
+      annotations:
+        triggervalue: "{{ $value }}"
+        summary: "{{ $labels.instance }} 节点1分钟平均负载大于12,节点应用:{{ $labels.appname }},节点配置:{{ $labels.specs }}"
+        description: "系统5分钟负载"
+
+    - expr: sum by (instance,group,appname,dc,specs) (node_load5{job="node-exporter",specs="32c64g"}) > 32
+      alert: node_exporter:load:load5
+      for: 300s
+      labels: 
+        unit: " "
+        job: "node-exporter"
+        severity: warning
+        level: "2"
+      annotations:
+        triggervalue: "{{ $value }}"
+        summary: "{{ $labels.instance }} 节点1分钟平均负载大于32,节点应用:{{ $labels.appname }},节点配置:{{ $labels.specs }}"
+        description: "系统5分钟负载"
+
+    - expr: sum by (instance,group,appname,dc,specs) (node_load5{job="node-exporter",specs="32c128g"}) > 32
+      alert: node_exporter:load:load5
+      for: 60s
+      labels: 
+        unit: " "
+        job: "node-exporter"
+        severity: warning
+        level: "2"
+      annotations:
+        triggervalue: "{{ $value }}"
+        summary: "{{ $labels.instance }} 节点1分钟平均负载大于32,节点应用:{{ $labels.appname }},节点配置:{{ $labels.specs }}"
+        description: "系统5分钟负载"
+
+    - expr: sum by (instance,group,appname,dc,specs) (node_load15{job="node-exporter",specs="8c16g"}) > 8
+      alert: node_exporter:load:load15
+      for: 60s
+      labels:
+        unit: " "
+        job: "node-exporter"
+        severity: warning
+        level: "2"
+      annotations:
+        triggervalue: "{{ $value }}"
+        summary: "{{ $labels.instance }} 节点1分钟平均负载大于8,节点应用:{{ $labels.appname }},节点配置:{{ $labels.specs }}"
+        description: "系统15分钟负载"
+
+    - expr: sum by (instance,group,appname,dc,specs) (node_load15{job="node-exporter",specs="8c32g"}) > 8
+      alert: node_exporter:load:load15
+      for: 300s
+      labels:
+        unit: " "
+        job: "node-exporter"
+        severity: warning
+        level: "2"
+      annotations:
+        triggervalue: "{{ $value }}"
+        summary: "{{ $labels.instance }} 节点1分钟平均负载大于8,节点应用:{{ $labels.appname }},节点配置:{{ $labels.specs }}"
+        description: "系统15分钟负载"
+
+    - expr: sum by (instance,group,appname,dc,specs) (node_load15{job="node-exporter",specs="12c24g"}) > 12
+      alert: node_exporter:load:load15
+      for: 60s
+      labels: 
+        unit: " "
+        job: "node-exporter"
+        severity: warning
+        level: "2"
+      annotations:
+        triggervalue: "{{ $value }}"
+        summary: "{{ $labels.instance }} 节点1分钟平均负载大于12,节点应用:{{ $labels.appname }},节点配置:{{ $labels.specs }}"
+        description: "系统15分钟负载"
+
+    - expr: sum by (instance,group,appname,dc,specs) (node_load15{job="node-exporter",specs="32c64g"}) > 32
+      alert: node_exporter:load:load15
+      for: 300s
+      labels: 
+        unit: " "
+        job: "node-exporter"
+        severity: warning
+        level: "2"
+      annotations:
+        triggervalue: "{{ $value }}"
+        summary: "{{ $labels.instance }} 节点1分钟平均负载大于32,节点应用:{{ $labels.appname }},节点配置:{{ $labels.specs }}"
+        description: "系统15分钟负载"
+
+    - expr: sum by (instance,group,appname,dc,specs) (node_load15{job="node-exporter",specs="32c128g"}) > 32
+      alert: node_exporter:load:load15
+      for: 60s
+      labels: 
+        unit: " "
+        job: "node-exporter"
+        severity: warning
+        level: "2"
+      annotations:
+        triggervalue: "{{ $value }}"
+        summary: "{{ $labels.instance }} 节点1分钟平均负载大于32,节点应用:{{ $labels.appname }},节点配置:{{ $labels.specs }}"
+        description: "系统15分钟负载"   
+##############################################################################################
+#                                 disk                                                       #
+    - expr: (node_filesystem_avail_bytes{job="node-exporter",fstype=~"ext4|xfs",mountpoint!~"/boot"})/1024/1024/1024 < 10
+      alert: node_exporter:disk:usage:free
+      labels: 
+        unit: byte
+        job: "node-exporter"
+        severity: warning
+        level: "2"
+      annotations:
+        triggervalue: "{{ $value }}"
+        summary: "{{ $labels.instance }} 节点磁盘 {{ $labels.mountpoint }} 剩余空间小于10G,节点应用:{{ $labels.appname }},节点配置:{{ $labels.specs }}"
+        description: "节点的磁盘剩余空间"
+
+    - expr: (1 - node_filesystem_avail_bytes{job="node-exporter",fstype=~"ext4|xfs|ext3"} / node_filesystem_size_bytes{job="node-exporter",fstype=~"ext4|xfs|ext3"}) * 100 > 90
+      alert: node_exporter:disk:used:percent    
+      labels: 
+        unit: "%"
+        job: "node-exporter"
+        severity: warning
+        level: "2"
+      annotations:
+        triggervalue: "{{ $value }}"
+        summary: "{{ $labels.instance }} 节点磁盘 {{ $labels.mountpoint }} 使用率大于90%,节点应用:{{ $labels.appname }},节点配置:{{ $labels.specs }}"
+        description: "节点的磁盘的使用百分比"
+
+    - expr: (irate(node_disk_written_bytes_total{job="node-exporter"}[5m]))/1024/1024 > 150
+      alert: node_exporter:disk:read:mb:rate
+      for: 300s
+      labels: 
+        unit: "MB/s"
+        job: "node-exporter"
+        severity: warning
+        level: "2"
+      annotations:
+        triggervalue: "{{ $value }}"
+        summary: "{{ $labels.instance }} 节点磁盘写入速率持续5分钟大于180MB,节点应用:{{ $labels.appname }},节点配置:{{ $labels.specs }}"
+        description: "节点的设备写入MB速率"
+
+    - expr: (irate(node_disk_read_bytes_total{job="node-exporter"}[5m]))/1024/1024 > 150
+      alert: node_exporter:disk:write:mb:rate
+      for: 300s
+      labels: 
+        unit: "MB/s"
+        job: "node-exporter"
+        severity: warning
+        level: "2"
+      annotations:
+        triggervalue: "{{ $value }}"
+        summary: "{{ $labels.instance }} 节点磁盘读取速率持续5分钟大于180MB,节点应用:{{ $labels.appname }},节点配置:{{ $labels.specs }}"
+        description: "节点的设备读取MB速率"
+
+    - expr: rate(node_disk_read_time_seconds_total{job="node-exporter"}[1m]) / rate(node_disk_reads_completed_total{job="node-exporter"}[1m]) > 100
+      alert: node_exporter:disk:read:time
+      for: 300s
+      labels:
+        unit: "ms"
+        job: "node-exporter"
+        severity: warning
+        level: "2"
+      annotations:
+        triggervalue: "{{ $value }}"
+        summary: "{{ $labels.instance }} 节点磁盘每分钟IO读的耗时大于100ms,节点应用:{{ $labels.appname }},节点配置:{{ $labels.specs }}"
+        description: "每分钟IO读的耗时"
+
+    - expr: rate(node_disk_write_time_seconds_total{job="node-exporter"}[1m]) / rate(node_disk_writes_completed_total{job="node-exporter"}[1m]) > 100
+      alert: node_exporter:disk:write:time
+      for: 300s
+      labels:
+        unit: "ms"        
+        job: "node-exporter"
+        severity: warning
+        level: "2"
+      annotations:
+        triggervalue: "{{ $value }}"
+        summary: "{{ $labels.instance }} 节点磁盘每分钟IO写的耗时大于100ms,节点应用:{{ $labels.appname }},节点配置:{{ $labels.specs }}"
+        description: "每分钟IO写的耗时"
+##############################################################################################
+#                                filesystem                                                  #
+    - expr:   (1 -node_filesystem_files_free{job="node-exporter",fstype=~"ext4|xfs|ext3"} / node_filesystem_files{job="node-exporter",fstype=~"ext4|xfs"}) * 100 > 80
+      alert: node_exporter:filesystem:used:percent    
+      labels: 
+        unit: "%"
+        job: "node-exporter"
+        severity: warning
+        level: "2"
+      annotations:
+        triggervalue: "{{ $value }}"
+        summary: "{{ $labels.instance }} 节点磁盘 {{ $labels.mountpoint }} inode使用率大于80%,节点应用:{{ $labels.appname }},节点配置:{{ $labels.specs }}"
+        description: "节点的inode的剩余可用的百分比"
+#############################################################################################
+#                                network                                                    #
+    - expr: (avg by (environment,instance,device,group,appname,dc,specs) (irate(node_network_receive_bytes_total{device=~"eth0|eth1|ens33|ens37"}[5m])))/1024/1024 > 500
+      alert: node_exporter:network:netin:bit:rate
+      for: 300s
+      labels: 
+        unit: "bit/s"
+        job: "node-exporter"
+        severity: warning
+        level: "2"
+      annotations:
+        triggervalue: "{{ $value }}"
+        summary: "{{ $labels.instance }} 节点5分钟内平均入流量大于500Mb,节点应用:{{ $labels.appname }},节点配置:{{ $labels.specs }}"
+        description: "节点网卡eth0每秒接收的比特数"
+
+    - expr: (avg by (environment,instance,device,group,appname,dc,specs) (irate(node_network_transmit_bytes_total{device=~"eth0|eth1|ens33|ens37"}[5m])))/1024/1024 > 500
+      alert: node_exporter:network:netout:bit:rate
+      for: 300s
+      labels: 
+        unit: "bit/s"
+        job: "node-exporter"
+        severity: warning
+        level: "2"
+      annotations:
+        triggervalue: "{{ $value }}"
+        summary: "{{ $labels.instance }} 节点5分钟内平均出流量大于500Mb,节点应用:{{ $labels.appname }},节点配置:{{ $labels.specs }}"
+        description: "节点网卡eth0每秒发送的比特数"
+
+    - expr: node_netstat_Tcp_CurrEstab{job="node-exporter"} > 8000
+      alert: node_exporter:network:tcp:established:count
+      for: 300s
+      labels: 
+        description: "节点当前established的个数"
+        unit: "个"
+        job: "node-exporter"
+        severity: warning
+        level: "2"
+      annotations:
+        triggervalue: "{{ $value }}"
+        summary: "{{ $labels.instance }} 节点established连接数大于8000,节点应用:{{ $labels.appname }},节点配置:{{ $labels.specs }}"
+        description: "节点网卡eth0每秒发送的比特数"
+
+    - expr: node_sockstat_TCP_tw{job="node-exporter"} > 5000
+      alert: node_exporter:network:tcp:timewait:count
+      for: 300s
+      labels: 
+        unit: "个"
+        job: "node-exporter"
+        severity: warning
+        level: "2"
+      annotations:
+        triggervalue: "{{ $value }}"
+        summary: "{{ $labels.instance }} 节点timewait连接数大于5000,节点应用:{{ $labels.appname }},节点配置:{{ $labels.specs }}"
+        description: "节点timewait的连接数"  
+#############################################################################################
+#                               time                                                   #
+    - expr: abs(node_timex_offset_seconds{job="node-exporter"}) > 5
+      alert: node_exporter:time:offset
+      for: 300s
+      labels: 
+        unit: "s"
+        job: "node-exporter"
+        severity: warning
+        level: "2"
+      annotations:
+        triggervalue: "{{ $value }}"
+        summary: "{{ $labels.instance }} 节点时间偏差大于5秒,节点应用:{{ $labels.appname }},节点配置:{{ $labels.specs }}"
+        description: "节点的时间偏差"

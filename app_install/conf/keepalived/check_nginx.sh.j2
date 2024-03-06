@@ -1,0 +1,11 @@
+#!/bin/bash
+COUNT=$(netstat -tunlp | grep -E '80' | wc -l )
+echo "文件服务数量为：$COUNT"
+#判断nacos 是否都挂掉了
+if [ $COUNT -lt 1 ];then
+   echo “网关异常，让出master”
+   exit 8
+else
+   echo "检测成功"
+   exit 0
+fi

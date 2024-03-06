@@ -1,0 +1,29 @@
+- name: check rsync
+  shell: command -v rsync >/dev/null 2>&1
+  register: rsync_check
+  failed_when: "'command rsync not found' in rsync_check.stderr"
+
+- name: check screen
+  shell: command -v screen >/dev/null 2>&1
+  register: screen_check
+  failed_when: "'command screen not found' in screen_check.stderr"
+
+- name: base rsync
+  when: rsync_check.rc != 0
+  copy:
+    src: "{{base_dir}}/../pkg/bin/{{item}}"
+    dest: "/usr/bin/{{item}}"
+    force: no
+    mode: 0755
+  with_items:
+  - rsync
+
+- name: base screen
+  when: screen_check.rc != 0
+  copy:
+    src: "{{base_dir}}/../pkg/bin/{{item}}"
+    dest: "/usr/bin/{{item}}"
+    force: no
+    mode: 0755
+  with_items:
+  - screen

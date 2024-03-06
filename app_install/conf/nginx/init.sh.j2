@@ -1,0 +1,22 @@
+#!/bin/bash
+  cd `dirname $0`
+  docker info >/dev/nul 2>&1
+  if [ "$?" != "0" ]
+  then
+    echo start dockerd
+    systemctl start docker
+  sleep 1
+  fi
+  sleep 1
+  docker inspect {{service_name}} >/dev/nul 2>&1
+  if [ "$?" != "0" ]
+  then
+    docker load -i {{work_dir}}/nginx.tgz
+    docker run -d --restart=always --name {{service_name}} --network host \
+      -v /etc/localtime:/etc/localtime:ro \
+      -v "{{work_dir}}/nginx.conf:/etc/nginx/nginx.conf" \
+      -v "{{work_dir}}/conf.d:/etc/nginx/conf.d/" \
+      -v "{{work_dir}}/data:/data" \
+      -v "{{work_dir}}/pass.db:/etc/nginx/pass.db:z" \
+      {{nginx_image}}
+  fi

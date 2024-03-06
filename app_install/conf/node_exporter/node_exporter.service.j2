@@ -1,0 +1,12 @@
+[Unit]
+Description=Node Exporter
+After=network.target
+
+[Service]
+User=nobody
+Group=nobody
+Type=simple
+ExecStart={{ work_dir }}/node_exporter --web.listen-address=:{{node_exporter_port}} --web.config.file={{ work_dir }}/web.yml
+
+[Install]
+WantedBy=multi-user.target

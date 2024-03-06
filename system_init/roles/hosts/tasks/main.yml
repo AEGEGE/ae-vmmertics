@@ -1,0 +1,2 @@
+- name: set hostname
+  shell: hostnamectl set-hostname {{region}}-{{organization}}-{{group_names[0]}}-{{ inventory_hostname.split('.') | join('-') }}

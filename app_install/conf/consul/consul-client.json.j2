@@ -1,0 +1,22 @@
+{
+    "bind_addr": "{{inventory_hostname}}",
+    "client_addr": "0.0.0.0",
+    "node_name": "node-{{inventory_hostname}}-client",
+    "datacenter":"{{CONSUL_DATACENTER}}",
+    "domain":"{{CONSUL_DOMAIN}}",
+    "data_dir":"/bitnami",
+    "pid_file":"/opt/bitnami/consul/tmp/consul.pid",
+    "ui":false,
+    "addresses": {
+        "http":"0.0.0.0"
+    },
+    "retry_join": ["{{consul_server_ip}}:8301"],
+    "ports": {
+        "http":{{consul_port}},
+        "dns":8610,
+        "serf_lan":8311,
+        "serf_wan":8312,
+        "server":8310
+    },
+    "serf_lan":"0.0.0.0"
+}

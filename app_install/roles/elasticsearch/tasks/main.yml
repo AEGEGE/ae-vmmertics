@@ -1,0 +1,272 @@
+- name: prepare some dirs
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: 0755
+    group: 1000
+    owner: 1000
+  with_items:
+  - "{{ work_dir }}"
+  - "{{ work_dir +'/logs' }}"
+  - "{{ work_dir +'/data' }}"
+  - "{{ work_dir +'/plugins' }}"
+  - "{{ work_dir +'/config' }}"
+  when: install_type == "install"
+
+- name: Setup sysctl
+  sysctl:
+    name: '{{ item.name }}'
+    value: '{{ item.value }}'
+    ignoreerrors: yes
+    reload: yes
+  with_items:
+  - {name: vm.max_map_count, value: 655360}
+  - {name: net.core.somaxconn, value: 20000}
+  when: install_type == "install"
+
+- name: sysctl changed
+  shell: "sysctl -p"
+  ignore_errors: true
+  when: install_type == "install"
+
+- name: tar files
+  copy:
+    dest: "{{work_dir}}/{{item}}"
+    src: "{{pkg_dir}}/{{item}}"
+  with_items:
+  - "elasticsearch.tgz"
+  when: install_type == "install"
+
+- name: ca files
+  copy:
+    dest: "{{work_dir}}/config/"
+    src: "{{pkg_dir}}/{{item}}"
+    group: 1000
+    owner: 1000
+  with_items:
+  - "sslkey"
+  when: install_type == "install"
+
+- name: send and install plugins
+  unarchive:
+    dest: "{{work_dir}}/"
+    src: "{{pkg_dir}}/es_plugins.tgz"
+    owner: 1000
+    group: 1000
+  when: plugins_enable == "true" and install_type == "install"
+
+- name: template config cluster elasticsearch.yml
+  template:
+    dest: "{{work_dir}}/config/elasticsearch.yml"
+    src: "{{conf_dir}}/elasticsearch_cluster.yml.j2"
+    group: 1000
+    owner: 1000
+  when: cluster_type == "cluster" and install_type == "install"
+
+- name: template config elasticsearch.yml
+  template:
+    dest: "{{work_dir}}/config/elasticsearch.yml"
+    src: "{{conf_dir}}/elasticsearch.yml.j2"
+    group: 1000
+    owner: 1000
+  when: cluster_type == "single-node" and install_type == "install"
+
+- name: template config role_mapping.yml.j2
+  template:
+    dest: "{{work_dir}}/config/role_mapping.yml"
+    src: "{{conf_dir}}/role_mapping.yml.j2"
+    group: 1000
+    owner: 1000
+  when: install_type == "install"
+
+- name: template start script
+  template:
+    dest: "{{work_dir}}/init.sh"
+    src: "{{conf_dir}}/init.sh.j2"
+    group: 1000
+    owner: 1000
+  when: install_type == "install"
+
+- name: "start"
+  shell: "bash {{work_dir}}/init.sh"
+  when: install_type == "install"
+
+- name: "check port"
+  wait_for: "host={{inventory_hostname}} port=9200 delay=30"
+  when: install_type == "install"
+
+- name: "create user"
+  shell: "docker exec {{service_name}} /usr/share/elasticsearch/bin/elasticsearch-users useradd {{elasticsearch_username}} -p {{elasticsearch_password}} -r superuser"
+  when: install_type == "install" and init | default('false') == "true"
+
+- name: "check port"
+  wait_for: "host={{inventory_hostname}} port=9200 delay=30"
+  when: install_type == "install"
+
+#- name: "change elastic https passwd"
+#  shell: "curl -k -u {{elasticsearch_username}}:{{elasticsearch_password}} -XPUT 'https://{{inventory_hostname}}:9200/_xpack/security/user/elastic/_password?pretty' -H 'Content-Type: application/json' -d '{\"password\": \"{{elasticsearch_password}}\"}'"
+#  when: es_xpack_security_http_ssl_enabled == "true" and install_type == "install" and init | default('false') == "true"
+- name: "change elastic https passwd"
+  uri:
+    url: 'https://{{inventory_hostname}}:9200/_security/user/elastic/_password'
+    method: PUT
+    body_format: json
+    headers:
+      Content-Type: application/json
+    body: '{"password": "{{elasticsearch_password}}"}'
+    url_username: "{{elasticsearch_username}}"
+    url_password: "{{elasticsearch_password}}"
+    status_code: 200
+    force_basic_auth: yes
+    validate_certs: no
+    return_content: true
+  when: es_xpack_security_http_ssl_enabled == "true" and install_type == "install" and init | default('false') == "true"
+
+- name: "change elastic http passwd"
+  uri:
+    url: 'http://{{inventory_hostname}}:9200/_security/user/elastic/_password'
+    method: PUT
+    body_format: json
+    headers:
+      Content-Type: application/json
+    body: '{"password": "{{elasticsearch_password}}"}'
+    url_username: "{{elasticsearch_username}}"
+    url_password: "{{elasticsearch_password}}"
+    status_code: 200
+    force_basic_auth: yes
+    return_content: true
+  when: es_xpack_security_http_ssl_enabled != "true" and install_type == "install" and init | default('false') == "true"
+
+- name: "change communication account http passwd"
+  uri:
+    url: "http://{{inventory_hostname}}:9200/_security/user/{{ item }}/_password"
+    method: PUT
+    body_format: json
+    headers:
+      Content-Type: application/json
+    body: '{"password": "{{es_conn_users_pass}}"}'
+    url_username: "{{elasticsearch_username}}"
+    url_password: "{{elasticsearch_password}}"
+    status_code: 200
+    force_basic_auth: yes
+    return_content: true
+  with_items:
+  - "apm_system"
+  - "kibana_system"
+  - "logstash_system"
+  - "beats_system"
+  - "remote_monitoring_user"
+  - "kibana"
+  when: es_xpack_security_http_ssl_enabled != "true" and install_type == "install" and init | default('false') == "true"
+
+- name: "change communication account https passwd"
+  uri:
+    url: "https://{{inventory_hostname}}:9200/_security/user/{{ item }}/_password"
+    method: PUT
+    body_format: json
+    headers:
+      Content-Type: application/json
+    body: '{"password": "{{es_conn_users_pass}}"}'
+    url_username: "{{elasticsearch_username}}"
+    url_password: "{{elasticsearch_password}}"
+    status_code: 200
+    force_basic_auth: yes
+    validate_certs: no
+    return_content: true
+  with_items:
+  - "apm_system"
+  - "kibana_system"
+  - "logstash_system"
+  - "beats_system"
+  - "remote_monitoring_user"
+  - "kibana"
+  when: es_xpack_security_http_ssl_enabled == "true" and install_type == "install" and init | default('false') == "true"
+
+#- name: "enable elastic https monitor"
+#  shell: "curl -k -u {{elasticsearch_username}}:{{elasticsearch_password}} -XPUT 'https://{{inventory_hostname}}:9200/_cluster/settings' -H 'Content-Type: application/json' -d '{\"persistent\": {\"xpack.monitoring.collection.enabled\": true}}'"
+#  when: es_xpack_security_http_ssl_enabled == "true" and install_type == "install" and init | default('false') == "true"
+- name: "enable elastic https monitor"
+  uri:
+    url: 'https://{{inventory_hostname}}:9200/_cluster/settings'
+    method: PUT
+    body_format: json
+    headers:
+      Content-Type: application/json
+    body: '{"persistent": {"xpack.monitoring.collection.enabled": true}}'
+    url_username: "{{elasticsearch_username}}"
+    url_password: "{{elasticsearch_password}}"
+    status_code: 200
+    force_basic_auth: yes
+    validate_certs: no
+    return_content: true
+  when: es_xpack_security_http_ssl_enabled == "true" and install_type == "install" and init | default('false') == "true"
+
+- name: "enable elastic https monitor"
+  uri:
+    url: 'http://{{inventory_hostname}}:9200/_cluster/settings'
+    method: PUT
+    body_format: json
+    headers:
+      Content-Type: application/json
+    body: '{"persistent": {"xpack.monitoring.collection.enabled": true}}'
+    url_username: "{{elasticsearch_username}}"
+    url_password: "{{elasticsearch_password}}"
+    status_code: 200
+    force_basic_auth: yes
+    return_content: true
+  when: es_xpack_security_http_ssl_enabled != "true" and install_type == "install" and init | default('false') == "true"
+
+- name: "install plugins and restart"
+  shell: "docker exec -i {{service_name}} bin/elasticsearch-plugin install --batch file:///opt/es_plugins/analysis-icu-{{es_version}}.zip && docker exec -i {{service_name}} bin/elasticsearch-plugin install --batch file:///opt/es_plugins/elasticsearch-analysis-pinyin-{{es_version}}.zip && docker exec -i {{service_name}} bin/elasticsearch-plugin install --batch file:///opt/es_plugins/elasticsearch-analysis-ik-{{es_version}}.zip && docker exec -i {{service_name}} bin/elasticsearch-plugin install --batch file:///opt/es_plugins/elasticsearch-analysis-stconvert-{{es_version}}.zip && docker exec -i {{service_name}} bin/elasticsearch-plugin install --batch file:///opt/es_plugins/repository-s3-{{es_version}}.zip && docker exec -i {{service_name}} bin/elasticsearch-plugin install --batch file:///opt/es_plugins/repository-cos-{{es_version}}.zip && docker restart {{service_name}}"
+  when: plugins_enable == "true" and install_type == "install"
+
+- name: stop all elasticsearch
+  shell: "docker rm -f {{service_name}}"
+  ignore_errors: true
+  when: install_type == "delete"
+
+- name: clean all elasticsearch data
+  shell: "rm -rf {{ item }}"
+  with_items:
+  - "{{ work_dir }}"
+  ignore_errors: true
+  when: install_type == "delete"
+
+- name: Setup sysctl
+  sysctl:
+    name: '{{ item.name }}'
+    value: '{{ item.value }}'
+    ignoreerrors: yes
+    reload: yes
+  with_items:
+  - {name: vm.max_map_count, value: 655360}
+  - {name: net.core.somaxconn, value: 20000}
+  when: install_type == "change"
+
+- name: sysctl changed
+  shell: "sysctl -p"
+  ignore_errors: true
+  when: install_type == "change"
+
+- name: template config cluster elasticsearch.yml
+  template:
+    dest: "{{work_dir}}/config/elasticsearch.yml"
+    src: "{{conf_dir}}/elasticsearch_cluster.yml.j2"
+  when: cluster_type == "cluster" and install_type == "change"
+
+- name: template config elasticsearch.yml
+  template:
+    dest: "{{work_dir}}/config/elasticsearch.yml"
+    src: "{{conf_dir}}/elasticsearch.yml.j2"
+  when: cluster_type == "single-node" and install_type == "change"
+
+- name: template config role_mapping.yml.j2
+  template:
+    dest: "{{work_dir}}/config/role_mapping.yml"
+    src: "{{conf_dir}}/role_mapping.yml.j2"
+  when: install_type == "change"
+
+- name: restart all elasticsearch
+  shell: "docker restart {{service_name}}"
+  ignore_errors: true
+  when: install_type == "change"

@@ -1,0 +1,43 @@
+global_defs {
+  default_interface {{keepalived_interface}}
+}
+
+vrrp_script check_vmauth {
+    script "/container/service/keepalived/assets/check_vmauth.sh"
+    interval 3
+    fall 2
+    rise 2
+    weight -30
+    init_fail
+}
+
+vrrp_instance VI_1 {
+  interface {{keepalived_interface}}
+
+  state {{keepalived_state}}
+  virtual_router_id {{keepalived_rid}}
+  priority {{keepalived_pri}}
+  nopreempt
+  unicast_src_ip {{inventory_hostname}}
+
+  unicast_peer {
+{{keepalived_unicastpeer}}
+  }
+
+  virtual_ipaddress {
+    {{keepalived_vip}}
+  }
+
+  authentication {
+    auth_type {{keepalived_authtype}}
+    auth_pass {{keepalived_authpass}}
+  }
+
+  track_script {
+    check_vmauth
+  }
+
+  notify "/container/service/keepalived/assets/notify.sh"
+  garp_master_delay 1
+  garp_master_refresh 5
+}

@@ -1,0 +1,75 @@
+- name: prepare some dirs
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: 0755
+    group: 1000
+    owner: 1000
+  with_items:
+  - "{{ work_dir }}"
+  - "{{ work_dir +'/config' }}"
+  when: install_type == "install"
+
+- name: tar files
+  copy:
+    dest: "{{work_dir}}/{{item}}"
+    src: "{{pkg_dir}}/{{item}}"
+  with_items:
+  - "kibana.tgz"
+  when: install_type == "install"
+
+- name: template config
+  template:
+    dest: "{{work_dir}}/config/kibana.yml"
+    src: "{{conf_dir}}/kibana.yml.j2"
+  when: install_type == "install"
+
+- name: enable rewrite_enable=on
+  lineinfile:
+    dest: "{{work_dir}}/config/kibana.yml"
+    regexp: "^#server.basePath"
+    line: "server.basePath: {{kibana_server_basePath}}"
+  when: kibana_rewrite_enable == "on" and install_type == "install"
+
+- name: enable rewrite_enable=on
+  lineinfile:
+    dest: "{{work_dir}}/config/kibana.yml"
+    regexp: "^#server.rewriteBasePath"
+    line: "server.rewriteBasePath: {{kibana_server_rewriteBasePath}}"
+  when: kibana_rewrite_enable == "on" and install_type == "install"
+
+- name: ca files
+  copy:
+    dest: "{{work_dir}}/config/"
+    src: "{{pkg_dir}}/{{item}}"
+  with_items:
+  - "sslkey"
+  when: install_type == "install"
+
+- name: chown config
+  shell: "chown -R 1000:1000 {{work_dir}}/config"
+  when: install_type == "install"
+
+- name: template start script
+  template:
+    dest: "{{work_dir}}/init.sh"
+    src: "{{conf_dir}}/init.sh.j2"
+  when: install_type == "install"
+
+- name: "start"
+  shell: "bash {{work_dir}}/init.sh"
+  when: install_type == "install"
+
+- name: "check port"
+  wait_for: port="{{kibana_port}}" delay=30
+  when: install_type == "install"
+
+- name: stop all kibana
+  shell: "docker rm -f {{service_name}}"
+  ignore_errors: true
+  when: install_type == "delete"
+
+- name: clean all kibana data
+  shell: "rm -rf {{ work_dir }}"
+  ignore_errors: true
+  when: install_type == "delete"

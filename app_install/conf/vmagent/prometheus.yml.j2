@@ -1,0 +1,70 @@
+global:
+  scrape_interval: {{vmagent_scrape_interval}}
+
+scrape_configs:
+  - job_name: 'vmagent'
+    static_configs:
+      - targets:
+{% for host in groups['vmagent'] %}
+        - {{host}}{{vmagent_Listen}}
+{% endfor %}
+
+  - job_name: 'vmalert'
+    static_configs:
+      - targets:
+{% for host in groups['vmalert'] %}
+        - {{host}}{{vmalert_Listen}}
+{% endfor %}
+
+  - job_name: 'vminsert'
+    static_configs:
+      - targets:
+{% for host in groups['vminsert'] %}
+        - {{host}}{{vminsert_Listen}}
+{% endfor %}
+
+  - job_name: 'vmselect'
+    static_configs:
+      - targets:
+{% for host in groups['vmselect'] %}
+        - {{host}}{{vmselect_Listen}}
+{% endfor %}
+
+  - job_name: 'vmstorage'
+    static_configs:
+      - targets:
+{% for host in groups['vmstorage'] %}
+        - {{host}}{{vmstorage_Listen}}
+{% endfor %}
+
+  - job_name: node-exporter
+    metrics_path: /metrics
+    basic_auth:
+      username: {{node_exporter_admin}}
+      password: {{node_exporter_passwd}}
+    consul_sd_configs:
+{% if  (vm_consul_Count | int) >= 3 %}
+      - server: {{vm_vip}}:{{consul_port}}
+{% else %}
+      - server: {{consul_ip}}:{{consul_server_port}}
+{% endif %}
+        services:
+          - node_exporter
+    relabel_configs:
+      - source_labels:  ["__meta_consul_dc"]
+        target_label: "dc"
+      - source_labels: ["__meta_consul_tags"]
+        regex: ",(.+),(.+),(.+),"
+        replacement: $1
+        action: replace
+        target_label: "group"
+      - source_labels: ["__meta_consul_tags"]
+        regex: ",(.+),(.+),(.+),"
+        replacement: $2
+        action: replace
+        target_label: "appname"
+      - source_labels: ["__meta_consul_tags"]
+        regex: ",(.+),(.+),(.+),"
+        replacement: $3
+        action: replace
+        target_label: "specs"

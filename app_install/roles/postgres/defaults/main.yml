@@ -1,0 +1,5 @@
+service_name: "{{name_prefix}}-postgres"
+pkg_dir: "{{base_dir}}/../pkg"
+conf_dir: "{{base_dir}}/conf/postgres"
+work_dir: "{{install_path}}/{{service_name}}"
+local_work_dir: "{{pkg_dir}}/{{service_name}}-sslkey"

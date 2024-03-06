@@ -1,0 +1,5 @@
+service_name: "{{name_prefix}}-etcd"
+pkg_dir: "{{base_dir}}/../pkg"
+conf_dir: "{{base_dir}}/conf/etcd"
+work_dir: "{{install_path}}/{{service_name}}"
+local_work_dir: "{{pkg_dir}}/{{service_name}}-sslkey"

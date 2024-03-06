@@ -1,0 +1,7 @@
+service_name: "{{name_prefix}}-elasticsearch"
+pkg_dir: "{{base_dir}}/../pkg"
+conf_dir: "{{base_dir}}/conf/elasticsearch"
+work_dir: "{{install_path}}/{{service_name}}"
+es_xpack_security_http_ssl_enabled: "{{xpack_security_http_ssl_enabled}}"
+
+elasticsearch_unicast_hosts: "{{elasticsearch_hosts_array|join(',')}}"

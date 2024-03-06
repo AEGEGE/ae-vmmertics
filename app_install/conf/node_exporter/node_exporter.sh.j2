@@ -1,0 +1,7 @@
+#!/bin/bash
+#join into consul
+if [ "{{vm_consul_Count}}" -ge 3 ];then
+    curl -X PUT -d '{"Datacenter": "{{CONSUL_DATACENTER}}","Node": "node_exporter","SkipNodeUpdate": true,"Service": {"ID": "node_exporter_{{inventory_hostname}}","Service": "node_exporter","Address": "{{inventory_hostname}}","Port": {{node_exporter_port}},"Tags": ["{{ group }}","{{ appname }}","{{ specs }}"]}}' http://{{vm_vip}}:{{consul_port}}/v1/catalog/register
+else
+    curl -X PUT -d '{"id": "node_exporter_{{inventory_hostname}}","name": "node_exporter","address": "{{inventory_hostname}}","port": 9100,"tags": ["{{ group }}","{{ appname }}","{{ specs }}"],"checks": [{"tcp": "{{inventory_hostname}}:9100","interval": "5s"}]}' http://{{groups['consul'][0]}}:{{consul_server_port}}/v1/agent/service/register
+fi

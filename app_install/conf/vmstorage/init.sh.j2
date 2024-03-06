@@ -1,0 +1,18 @@
+#!/bin/bash
+  cd `dirname $0`
+  docker info >/dev/nul 2>&1
+  if [ "$?" != "0" ]
+  then
+    echo start dockerd
+    systemctl start docker
+  sleep 1
+  fi
+  sleep 1
+  docker inspect {{service_name}} >/dev/nul 2>&1
+  if [ "$?" != "0" ]
+  then
+    docker load -i {{work_dir}}/vmstorage.tgz
+    docker run -d --restart=always --name {{service_name}} --network host \
+      -v {{work_dir}}/data:/vmstorage \
+      {{vmstorage_image}} --storageDataPath=/storage --httpListenAddr={{vmstorage_Listen}} --vmselectAddr={{vmselectAddr}} --vminsertAddr={{vminsertAddr}} --storage.minFreeDiskSpaceBytes={{vmstorage_FreeDisk}} --dedup.minScrapeInterval={{vm_minScrapeInterval}} --loggerFormat={{vm_loggerFormat}} --loggerTimezone={{vm_logtz}}
+  fi

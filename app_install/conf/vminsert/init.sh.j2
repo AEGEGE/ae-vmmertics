@@ -1,0 +1,17 @@
+#!/bin/bash
+  cd `dirname $0`
+  docker info >/dev/nul 2>&1
+  if [ "$?" != "0" ]
+  then
+    echo start dockerd
+    systemctl start docker
+  sleep 1
+  fi
+  sleep 1
+  docker inspect {{service_name}} >/dev/nul 2>&1
+  if [ "$?" != "0" ]
+  then
+    docker load -i {{work_dir}}/vminsert.tgz
+    docker run -d --restart=always --name {{service_name}} --network host \
+      {{vminsert_image}} --replicationFactor={{vminsert_rpF}} --httpListenAddr={{vminsert_Listen}} --storageNode={{vminsert_Node}} --loggerFormat={{vm_loggerFormat}} --loggerTimezone={{vm_logtz}}
+  fi

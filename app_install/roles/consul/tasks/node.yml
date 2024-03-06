@@ -1,0 +1,58 @@
+- name: prepare some dirs
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: 0755
+    group: 1001
+    owner: 1001
+  with_items:
+  - "{{ work_dir }}"
+  - "{{ work_dir +'/conf' }}"
+  - "{{ work_dir +'/data' }}"
+  when: install_type == "install"
+
+- name: tar files
+  copy:
+    dest: "{{work_dir}}/{{item}}"
+    src: "{{pkg_dir}}/{{item}}"
+  with_items:
+  - "consul.tgz"
+  when: install_type == "install"
+
+- name: template start sever script
+  template:
+    dest: "{{work_dir}}/conf/consul.json"
+    src: "{{conf_dir}}/consul.json.j2"
+    mode: 0755
+    group: 1001
+    owner: 1001
+  when: install_type == "install" and (vm_consul_Count | int) >= 3 and node_name == "consul-server"
+
+- name: template start server script
+  template:
+    dest: "{{work_dir}}/conf/consul.json"
+    src: "{{conf_dir}}/consul-client.json.j2"
+    mode: 0755
+    group: 1001
+    owner: 1001
+  when: install_type == "install" and (vm_consul_Count | int) >= 3 and node_name == "consul-client"
+
+- name: template start script
+  template:
+    dest: "{{work_dir}}/init.sh"
+    src: "{{conf_dir}}/init.sh.j2"
+  when: install_type == "install"
+
+- name: "start"
+  shell: "bash {{work_dir}}/init.sh"
+  when: install_type == "install"
+
+- name: stop all {{node_name}}
+  shell: "docker rm -f {{name_prefix}}-{{node_name}}"
+  ignore_errors: true
+  when: install_type == "delete"
+
+- name: clean all {{service_name}} data
+  shell: "rm -rf {{ work_dir }}"
+  ignore_errors: true
+  when: install_type == "delete"

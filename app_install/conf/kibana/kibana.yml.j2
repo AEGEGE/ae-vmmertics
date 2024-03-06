@@ -1,0 +1,16 @@
+server.host: "0.0.0.0"
+server.port: "{{kibana_port}}"
+elasticsearch.hosts: [{{elasticsearch_https_unicast_hot_hosts_port}}]
+elasticsearch.username: "kibana_system"
+elasticsearch.password: "{{es_conn_users_pass}}"
+i18n.locale: "{{kibana_i18n_locale}}"
+#server.basePath: "{{kibana_server_basePath}}"
+#server.rewriteBasePath: {{kibana_server_rewriteBasePath}}
+#elasticsearch.ssl.certificateAuthorities: "/usr/share/kibana/config/sslkey/{{ROOT_CA_CERT}}"
+#elasticsearch.ssl.verificationMode: certificate
+elasticsearch.ssl.verificationMode: {{elasticsearch_ssl_verificationMode}}
+xpack.encryptedSavedObjects.encryptionKey: "{{kibana_32_encryptionKey}}"
+xpack.reporting.encryptionKey: "{{kibana_32_encryptionKey}}"
+xpack.security.encryptionKey: "{{kibana_32_encryptionKey}}"
+xpack.reporting.capture.browser.chromium.disableSandbox: "{{xpack_reporting_capture_browser_chromium_disableSandbox}}"
+monitoring.ui.ccs.enabled: false

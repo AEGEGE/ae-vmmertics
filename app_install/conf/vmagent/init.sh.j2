@@ -1,0 +1,27 @@
+#!/bin/bash
+  cd `dirname $0`
+  docker info >/dev/nul 2>&1
+  if [ "$?" != "0" ]
+  then
+    echo start dockerd
+    systemctl start docker
+  sleep 1
+  fi
+  sleep 1
+  docker inspect {{service_name}} >/dev/nul 2>&1
+  if [ "$?" != "0" ]
+  then
+    docker load -i {{work_dir}}/vmagent.tgz
+    if [ {{vmagent_count}} -gt 1 ]
+    then
+      docker run -d --restart=always --name {{service_name}} --network host \
+        -v {{work_dir}}/prometheus.yml:/etc/prometheus/prometheus.yml \
+        -v {{work_dir}}/data:/vmagentdata \
+        {{vmagent_image}} --httpListenAddr={{vmagent_Listen}} --promscrape.cluster.membersCount={{vmagent_count}} --promscrape.cluster.replicationFactor={{vmagent_rpF}} --promscrape.cluster.memberNum={{vmagent_memberNum}} --promscrape.config=/etc/prometheus/prometheus.yml --remoteWrite.url=http://{{remoteWriteip}}{{vmauth_Listen}}/insert/0/prometheus/ --remoteWrite.basicAuth.username={{vmauth_insert_user}} --remoteWrite.basicAuth.password={{vmauth_pass}} --loggerFormat={{vm_loggerFormat}} --loggerTimezone={{vm_logtz}}
+    else
+      docker run -d --restart=always --name {{service_name}} --network host \
+        -v {{work_dir}}/prometheus.yml:/etc/prometheus/prometheus.yml \
+        -v {{work_dir}}/data:/vmagentdata \
+        {{vmagent_image}} --httpListenAddr={{vmagent_Listen}} --promscrape.config=/etc/prometheus/prometheus.yml --remoteWrite.url=http://{{groups['vminsert'][0]}}{{vminsert_Listen}}/insert/0/prometheus/ --loggerFormat={{vm_loggerFormat}} --loggerTimezone={{vm_logtz}}
+    fi
+  fi

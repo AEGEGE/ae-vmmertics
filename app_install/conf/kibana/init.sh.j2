@@ -1,0 +1,32 @@
+#!/bin/bash
+  cd `dirname $0`
+  docker info >/dev/nul 2>&1
+  if [ "$?" != "0" ]
+  then
+    echo start dockerd
+    systemctl start docker
+  sleep 1
+  fi
+  sleep 1
+  docker inspect kibana >/dev/nul 2>&1
+  if [ "$?" != "0" ]
+  then
+    docker load -i {{work_dir}}/kibana.tgz
+    if [ "{{xpack_security_http_ssl_enabled}}" != "true" ]
+      then
+      docker run -d --restart=always --name {{service_name}} --network host \
+          -e ELASTICSEARCH_HOSTS='[{{elasticsearch_http_unicast_hot_hosts_port}}]' \
+          -v "/etc/localtime":/etc/localtime:ro \
+          -e LANG=en_US.utf8 \
+          -v {{work_dir}}/config/kibana.yml:/usr/share/kibana/config/kibana.yml \
+          {{kibana_image}}
+    else
+      docker run -d --restart=always --name {{service_name}} --network host \
+          -e ELASTICSEARCH_HOSTS='[{{elasticsearch_https_unicast_hot_hosts_port}}]' \
+          -v "/etc/localtime":/etc/localtime:ro \
+          -e LANG=en_US.utf8 \
+          -v {{work_dir}}/config/kibana.yml:/usr/share/kibana/config/kibana.yml \
+          -v {{work_dir}}/config/sslkey:/usr/share/kibana/config/sslkey \
+          {{kibana_image}}
+    fi
+  fi

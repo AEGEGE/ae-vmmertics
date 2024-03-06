@@ -1,0 +1,75 @@
+- name: prepare some dirs
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: 0755
+    group: 472
+    owner: 472
+  with_items:
+  - "{{ work_dir }}"
+  - "{{ work_dir +'/data' }}"
+  - "{{ work_dir +'/data/plugins' }}"
+  - "{{ work_dir +'/data/png' }}"
+  - "{{ work_dir +'/config' }}"
+  - "{{ work_dir +'/config/provisioning' }}"
+  - "{{ work_dir +'/config/provisioning/datasources' }}"
+  - "{{ work_dir +'/config/provisioning/plugins' }}"
+  - "{{ work_dir +'/config/provisioning/notifiers' }}"
+  - "{{ work_dir +'/config/provisioning/alerting' }}"
+  when: install_type == "install"
+
+- name: tar files
+  copy:
+    dest: "{{work_dir}}/{{item}}"
+    src: "{{pkg_dir}}/{{item}}"
+  with_items:
+  - "grafana.tgz"
+  when: install_type == "install"
+
+- name: template start script
+  template:
+    dest: "{{work_dir}}/init.sh"
+    src: "{{conf_dir}}/init.sh.j2"
+  when: install_type == "install"
+
+- name: template grafana.ini
+  template:
+    dest: "{{work_dir}}/config/grafana.ini"
+    src: "{{conf_dir}}/grafana.ini.j2"
+  when: install_type == "install"
+
+- name: template datasource.yml
+  template:
+    dest: "{{work_dir}}/config/provisioning/datasources/datasource.yml"
+    src: "{{conf_dir}}/datasource.yml.j2"
+  when: install_type == "install"
+
+- name: copy ldap
+  copy:
+    dest: "{{work_dir}}/config/ldap.toml"
+    src: "{{conf_dir}}/ldap.toml"
+    group: 472
+    owner: 472
+  when: install_type == "install"
+
+- name: copy dashboards
+  copy:
+    dest: "{{work_dir}}/config/provisioning/"
+    src: "{{conf_dir}}/dashboards"
+    group: 472
+    owner: 472
+  when: install_type == "install"
+
+- name: "start"
+  shell: "bash {{work_dir}}/init.sh"
+  when: install_type == "install"
+
+- name: stop all {{service_name}}
+  shell: "docker rm -f {{service_name}}"
+  ignore_errors: true
+  when: install_type == "delete"
+
+- name: clean all {{service_name}} data
+  shell: "rm -rf {{ work_dir }}"
+  ignore_errors: true
+  when: install_type == "delete"

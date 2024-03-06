@@ -1,0 +1,78 @@
+##############################################################################################
+####################################rabbitmq-exporter############################################
+##############################################################################################
+groups:
+  - name: RabbitMQStatsAlert
+    interval: 15s
+    rules:
+    - alert: rabbitmq_network_pratitions_detected
+      expr: rabbitmq_partitions > 0
+      for: 15s
+      labels:
+        severity: critical
+        level: "3"
+        job: "rabbitmq-exporter"
+      annotations:
+        summary: 'RabbitMQ at {{ $labels.instance }} has {{ $value }} partitions'
+        triggervalue: '{{ $value }}'
+        description: "检测到RabbitMQ网络分区"
+
+    - alert: rabbitmq_down
+      expr:  rabbitmq_up != 1
+      for: 15s
+      labels:
+        severity: critical
+        level: "3"
+        job: "rabbitmq-exporter"
+      annotations:
+        summary: "{{ $labels.instance }} RabbitMQ 服务宕机了"
+        triggervalue: "{{ $value }}"
+        description: "RabbitMQ宕机了"
+
+    - alert: rabbitmq_file_descriptionriptor_usage_high
+      expr:  fd_used * 100 /fd_total > 80
+      for: 10m
+      labels:
+        severity: warning
+        level: "2"
+        job: "rabbitmq-exporter"
+      annotations:
+        summary: "{{ $labels.instance }} RabbitMQ文件描述符使用率过高."
+        triggervalue: "{{ $value }}"
+        description: "RabbitMQ文件描述符使用率过高"
+
+    - alert: rabbitmq_node_disk_free_alarm
+      expr:  rabbitmq_node_disk_free_alarm > 0
+      for: 10m
+      labels:
+        severity: warning
+        level: "2"
+        job: "rabbitmq-exporter"
+      annotations:
+        summary: "{{ $labels.instance }} RabbitMQ磁盘使用率过高."
+        triggervalue: "{{ $value }}"
+        description: "RabbitMQ磁盘使用率过高"
+
+    - alert: rabbitmq_node_memory_alarm
+      expr:  rabbitmq_node_mem_alarm > 0
+      for: 10m
+      labels:
+        severity: warning
+        level: "2"
+        job: "rabbitmq-exporter"
+      annotations:
+        summary: "{{ $labels.instance }} RabbitMQ可用内存不足."
+        triggervalue: "{{ $value }}"
+        description: "RabbitMQ可用内存不足"
+
+    - alert: rabbitmq_high_message_load
+      expr:  rabbitmq_queue_messages_total > 17000 or increase(rabbitmq_queue_messages_total[5m]) > 4000
+      for: 5m
+      labels:
+        severity: warning
+        level: "2"
+        job: "rabbitmq-exporter"
+      annotations:
+        summary: "{{ $labels.instance }} RabbitMQ 消息负载较高. Total Queue depth > 17000 or 5分钟 more than 4000 messages."
+        triggervalue: "{{ $value }}"
+        description: "RabbitMQ消息负载较高"

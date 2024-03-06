@@ -1,0 +1,66 @@
+##############################################################################################
+####################################redis-exporter############################################
+##############################################################################################
+groups:
+  - name: RedisStatsAlert
+    interval: 15s
+    rules:
+    - alert: Redis down
+      expr: redis_up == 0
+      for: 30s
+      labels:
+        severity: critical
+        level: "3"
+        job: "redis-exporter"
+      annotations:
+        triggervalue: "{{ $value }}"
+        summary: "{{ $labels.instance }} 节点redis数据库宕机了"
+        description: "Redis宕机了"
+    
+    - alert: Redis out of memory
+      expr: redis_memory_used_bytes / redis_total_system_memory_bytes * 100 > 90
+      for: 30s
+      labels:
+        severity: warning
+        level: "2"
+        job: "redis-exporter"
+      annotations:
+        triggervalue: "{{ $value }}"
+        summary: "{{ $labels.instance }} 节点内存使用率超过90%"
+        description: "Redis内存使用率超过90%"
+
+    - alert: Redis too many connections
+      expr: redis_connected_clients / redis_config_maxclients * 100 > 90
+      for: 30s
+      labels:
+        severity: warning
+        level: "2"
+        job: "redis-exporter"
+      annotations:
+        triggervalue: "{{ $value }}"
+        summary: "{{ $labels.instance }} Redis连接池使用率超过90%"
+        description: "Redis连接池使用率超过90%"
+
+    - alert: Redis not enough connections
+      expr: "redis_connected_clients < 5"
+      for: 30s
+      labels:
+        severity: warning
+        level: "2"
+        job: "redis-exporter"
+      annotations:
+        triggervalue: "{{ $value }}"
+        summary: "{{ $labels.instance }} Redis连接池使用率低于5个"
+        description: "Redis连接池使用率低于5个"
+
+    - alert: Redis rejected connections
+      expr: "increase(redis_rejected_connections_total[1m]) > 0"
+      for: 30s
+      labels:
+        severity: warning
+        level: "2"
+        job: "redis-exporter"
+      annotations:
+        triggervalue: "{{ $value }}"
+        summary: "{{ $labels.instance }} Redis平均1分钟内拒绝连接数超过0个"
+        description: "Redis平均1分钟内拒绝连接数超过0个"

@@ -1,0 +1,6 @@
+- include_tasks: node.yml
+  vars:
+    node_name: "{{service_name}}-{{cur_pgrole}}"
+  with_items: "{{ pgrole.split(',') }}"
+  loop_control:
+    loop_var: cur_pgrole

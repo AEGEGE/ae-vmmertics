@@ -1,0 +1,14 @@
+users:
+- username: "{{vmauth_select_user}}"
+  password: "{{vmauth_pass}}"
+  url_prefix:
+  {% for host in groups['vmselect'] %}
+    - http://{{host}}{{vmselect_Listen}}
+  {% endfor %}
+
+- username: "{{vmauth_insert_user}}"
+  password: "{{vmauth_pass}}"
+  url_prefix:
+  {% for host in groups['vminsert'] %}
+    - http://{{host}}{{vminsert_Listen}}
+  {% endfor %}

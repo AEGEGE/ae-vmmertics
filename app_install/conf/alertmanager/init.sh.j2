@@ -1,0 +1,31 @@
+#!/bin/bash
+  cd `dirname $0`
+  docker info >/dev/nul 2>&1
+  if [ "$?" != "0" ]
+  then
+    echo start dockerd
+    systemctl start docker
+  sleep 1
+  fi
+  sleep 1
+  docker inspect {{service_name}} >/dev/nul 2>&1
+  if [ "$?" != "0" ]
+  then
+    docker load -i {{work_dir}}/alertmanager.tgz
+    if [ {{alertmanager_count}} -gt 1 ]
+    then
+      docker run -d --restart=always --name {{service_name}} --network host \
+        -v /etc/localtime:/etc/localtime:ro \
+        -v {{work_dir}}/data:/alertmanager \
+        -v {{work_dir}}/conf/:/etc/alertmanager/ \
+        -e "LANG=LANG=C.UTF-8" \
+        {{alertmanager_image}} --data.retention={{alertmanager_retention}} --storage.path=/alertmanager --config.file=/etc/alertmanager/alertmanager.yml --cluster.listen-address="{{inventory_hostname}}:8001" --cluster.peer={{groups['alertmanager'][0]}}:8001
+    else
+      docker run -d --restart=always --name {{service_name}} --network host \
+        -v /etc/localtime:/etc/localtime:ro \
+        -v {{work_dir}}/data:/alertmanager \
+        -v {{work_dir}}/conf/:/etc/alertmanager/ \
+        -e "LANG=LANG=C.UTF-8" \
+        {{alertmanager_image}} --data.retention={{alertmanager_retention}} --storage.path=/alertmanager --config.file=/etc/alertmanager/alertmanager.yml
+    fi
+  fi

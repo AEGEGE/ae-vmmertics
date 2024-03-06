@@ -1,0 +1,16 @@
+apiVersion: 1
+
+datasources:
+    - name: VictoriaMetrics - cluster
+      type: prometheus
+      access: proxy
+{% if vmauth_count > '1' %}
+      url: http://{{vm_vip}}{{vmauth_Listen}}/select/0/prometheus
+{% else %}
+      url: http://{{groups['vmauth'][0]}}{{vmauth_Listen}}/select/0/prometheus
+{% endif %}
+      isDefault: true
+      basicAuth: {{grafana_vmauth}}
+      basicAuthUser: '{{vmauth_select_user}}'
+      secureJsonData:
+        basicAuthPassword: '{{vmauth_pass}}'

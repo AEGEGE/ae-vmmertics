@@ -1,0 +1,58 @@
+#!/bin/bash
+cd `dirname $0`
+docker info >/dev/nul 2>&1
+if [ "$?" != "0" ]
+then
+  echo start dockerd
+  systemctl start docker
+sleep 1
+fi
+sleep 1
+docker inspect {{service_name}} >/dev/nul 2>&1
+if [ "$?" != "0" ]
+then
+  docker load -i {{work_dir}}/postgres.tgz
+  if [ {{PG_MODE}} == patroni ]
+  then
+    if [ -n "{{PATRONI_VIP}}" ]
+    then
+      docker run -d --restart=unless-stopped --network host --name {{service_name}} --cap-add=NET_ADMIN {{ETCD_ADD_HOST}} \
+        -e "PATRONI_ETCDHOSTS={{PATRONI_ETCDHOSTS}}" \
+        -e "PG_MODE={{PG_MODE}}" \
+        -e "PATRONI_VIP={{PATRONI_VIP}}" \
+        -e "PATRONI_SCOPE={{PATRONI_SCOPE}}" \
+        -e "PATRONI_SUPASS={{PATRONI_SUPASS}}" \
+        -e "PATRONI_REPPASS={{PATRONI_REPPASS}}" \
+        -e "TZ=Asia/Shanghai" \
+        -e "PGTZ=Asia/Shanghai" \
+        -v /etc/localtime:/etc/localtime \
+        -v {{work_dir}}/pg:/data/pg \
+        {{postgres_image}}
+    else
+      docker run -d --restart=unless-stopped --network host --name {{service_name}} --cap-add=NET_ADMIN {{ETCD_ADD_HOST}} \
+        -e "PATRONI_ETCDHOSTS={{PATRONI_ETCDHOSTS}}" \
+        -e "PG_MODE={{PG_MODE}}" \
+        -e "PATRONI_SCOPE={{PATRONI_SCOPE}}" \
+        -e "PATRONI_SUPASS={{PATRONI_SUPASS}}" \
+        -e "PATRONI_REPPASS={{PATRONI_REPPASS}}" \
+        -e "TZ=Asia/Shanghai" \
+        -e "PGTZ=Asia/Shanghai" \
+        -v /etc/localtime:/etc/localtime \
+        -v {{work_dir}}/pg:/data/pg \
+        {{postgres_image}}
+    fi
+  else
+    docker run -d --restart=unless-stopped --network host --name {{service_name}} \
+      -e "POSTGRES_PASSWORD={{POSTGRES_PASSWORD}}" \
+      -e "TZ=Asia/Shanghai" \
+      -e "PGTZ=Asia/Shanghai" \
+      -v /etc/localtime:/etc/localtime \
+      -v {{work_dir}}/pg:/var/lib/postgresql/data \
+      {{postgres_image}}
+  fi
+fi
+
+sleep 60
+
+docker exec -i vm-postgres psql  -c "SELECT 1 FROM pg_database WHERE datname = '{{PA_DB_NAME}}'" | grep -q 1 || docker exec -i vm-postgres psql -U postgres -c "CREATE DATABASE {{PA_DB_NAME}}"
+docker exec -i vm-postgres psql  -c "SELECT 1 FROM pg_database WHERE datname = '{{GRAFANA_DB_NAME}}'" | grep -q 1 || docker exec -i vm-postgres psql -U postgres -c "CREATE DATABASE {{GRAFANA_DB_NAME}}"

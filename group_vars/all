@@ -1,0 +1,151 @@
+# es
+elasticsearch_hosts_array: "{{groups['elasticsearch']|d([])}}"
+ip_aaaa: "{{(inventory_hostname)|d(.)}}"
+elasticsearch_hosts_array_1: "{{groups['elasticsearch']}}"
+elasticsearch_unicast_hosts_port: '{% for h in elasticsearch_hosts_array %}{% if loop.index0>0 %},{% endif %}"{{h}}:{{9200|string}}"{% endfor %}'
+elasticsearch_http_unicast_hosts_port: '{% for h in elasticsearch_hosts_array %}{% if loop.index0>0 %},{% endif %}"http://{{h}}:{{9200|string}}"{% endfor %}'
+elasticsearch_https_unicast_hosts_port: '{% for h in elasticsearch_hosts_array %}{% if loop.index0>0 %},{% endif %}"https://{{h}}:{{9200|string}}"{% endfor %}'
+#elasticsearch_https_unicast_hot_hosts_port: '{% for i in elasticsearch_hosts_array %}{% if "data_hot" in hostvars[i].es_node_roles %}{% if loop.index0>0 %},{% endif %}"https://{{i}}:{{9200|string}}"{% endif %}{% endfor %}'
+#elasticsearch_http_unicast_hot_hosts_port: '{% for i in elasticsearch_hosts_array %}{% if "data_hot" in hostvars[i].es_node_roles %}{% if loop.index0>0 %},{% endif %}"http://{{i}}:{{9200|string}}"{% endif %}{% endfor %}'
+AAAAA: '{% for i in elasticsearch_hosts_array %}{% if "data_hot" in hostvars[i].es_node_roles %}"http://{{i}}:{{9200|string}}",{% endif %}{% endfor %}'
+BBBBB: '{% for i in elasticsearch_hosts_array %}{% if "data_hot" in hostvars[i].es_node_roles %}"https://{{i}}:{{9200|string}}",{% endif %}{% endfor %}'
+elasticsearch_http_unicast_hot_hosts_port: '{{AAAAA[:-1]}}'
+elasticsearch_https_unicast_hot_hosts_port: '{{BBBBB[:-1]}}'
+elasticsearch_unicast_hosts: "{{elasticsearch_hosts_array|join(',')}}"
+elasticsearch_unicast_master_hosts: '{% for i in elasticsearch_hosts_array %}{% if "master" in hostvars[i].es_node_roles and "voting_only" not in hostvars[i].es_node_roles %}{% if loop.index0>0 %},{% endif %}{{i}}{% endif %}{% endfor %}'
+es_ip_1: "{{groups['elasticsearch'][0]}}"
+kibana_ip_1: "{{groups['kibana'][0]}}"
+kibana_ip: "{% for i in groups['elasticsearch'] %}{% if hostvars[i].kibana is defined and hostvars[i].kibana == 'true' %}{{es_ip_1}}{% endif %}{% endfor %}"
+logstash_hosts_array: "{{groups['logstash']|d([])}}"
+logstash_unicast_hosts_port: '{% for h in logstash_hosts_array %}{% if loop.index0>0 %},{% endif %}"{{h}}:{{5044|string}}"{% endfor %}'
+
+#sslkey
+sslkey_ip3: "{{groups['all']|d([])}}"
+sslkey_ip2: "{{sslkey_ip3|join(',')}}"
+
+#
+pkgsealos_images1: "{% for i in pkgsealos_images %} {{ i }}{% endfor %}"
+
+hosts_lines: |
+      {% for i in groups['k8s-all'] %}
+      "{{ i }} {{ hostvars[i].hostname }}",
+      {% endfor %}
+
+etcd_hosts_lines: |
+      {% for i in groups['etcd'] %}
+      "{{ i }} {{ hostvars[i].hostname }}",
+      {% endfor %}
+
+#  {% if hostvars[host].registry = true %}
+hosts_registry1: |-
+  {% for host in groups['all'] %}
+  {% if hostvars[host].registry|default(false) | bool %}
+  {{ host }} {{ image_registryDomain }}
+  {% endif %}
+  {% endfor %}
+
+hosts_registry: "{{ hosts_registry1 | replace('\n', '') }}"
+
+k8shosts_list: |
+      {% for i in groups['k8s-all'] %}
+      "{{ i }}",
+      {% endfor %}
+
+labels_lines: |
+      {% for host in groups['k8s-all'] %}
+      {% if hostvars[host].labels is defined %}
+      {% set list = hostvars[host].labels.split(',') %}
+      {% for i in list %}
+      "{{ hostvars[host].hostname }} {{ i }}",
+      {% endfor %}
+      {% endif %}
+      {% endfor %}
+
+ETCD_INITIAL_CLUSTER: |-
+  {% for host in groups['etcd'] %}
+  {% set hostname = hostvars[host].hostname %}
+  {{ hostname }}=http://{{ host }}:2380{% if not loop.last %},{% endif %}
+  {% endfor %}
+
+ETCD_ADD_HOST: |-
+  {% for host in groups['etcd'] %}
+  {% set hostname = hostvars[host].hostname %}
+  --add-host={{ hostname }}:{{ host }}{% if not loop.last %} {% endif %}
+  {% endfor %}
+
+
+PATRONI_ETCDHOSTS: |-
+  {% for host in groups['etcd'] %}
+  {{ host }}:2379{% if not loop.last %},{% endif %}
+  {% endfor %}
+
+k8snode_ip_list: |-
+  {% for host in groups['k8s-node'] %}
+  {{host}}
+  {% endfor %}
+
+k8smaster_ip_list: |-
+  {% for host in groups['k8s-master']|difference([inventory_hostname]) %}
+  {{host}}
+  {% endfor %}
+
+openssl1_domain: |
+  {% for q in openssl_domain %}
+  {{q}}
+  {% endfor %}
+
+traefik_ips: |
+  {% for q in groups['k8s-all'] %}
+  {% if groups['k8s-all'] | map('extract', hostvars, ['labels']) | select('defined') | select('search', 'traefik=true') %}
+  {% if loop.first %}
+  {{q}}
+  {% endif %}
+  {% endif %}
+  {% endfor %}
+
+traefik_ip: "{{ traefik_ips | replace('\n', '') }}"
+
+#vm_storage_Count: "{{ groups['k8s-all'] | regex_search('vmmetrics=init')|length }}"
+vm_storage_Count: "{{ groups['k8s-all'] | map('extract', hostvars, ['labels']) | select('defined') | select('search', 'vmmetrics=init') | list | length }}"
+traefik_replicaCount: "{{ groups['k8s-all'] | map('extract', hostvars, ['labels']) | select('defined') | select('search', 'traefik=true') | list | length }}"
+kafka_bootstrapServers1: "{% for i in range(kafka_replicaCount) %}{{kafka_clustername}}-{{ loop.index0 }}.{{kafka_clustername}}-headless.{{ops_ns}}.svc:9092,{% endfor %}"
+kafka_bootstrapServers: "{{kafka_bootstrapServers1.rstrip(',')}}"
+filebeat_output_kafka1: "{% for i in range(kafka_replicaCount) %}'{{kafka_clustername}}-{{ loop.index0 }}.{{kafka_clustername}}-headless.{{ops_ns}}.svc:9092',{% endfor %}"
+filebeat_output_kafka: "{{filebeat_output_kafka1.rstrip(',')}}"
+output_es1: '{% for i in range(elastic_master_replicas) %}"{{elastic_clustername}}-master-{{ loop.index0 }}.{{elastic_clustername}}-master-headless.{{ops_ns}}.svc:9200",{% endfor %}'
+output_es: "{{output_es1.rstrip(',')}}"
+
+#vm_docker_cluster
+vmagent_count: "{{ groups['vmagent']|length }}"
+vminsert_Node_array: "{{ groups['vmstorage']}}"
+vminsert_Node: '{% for h in vminsert_Node_array %}{% if loop.index0>0 %},{% endif %}{{h}}{{vminsertAddr}}{% endfor %}'
+vmselect_Node: '{% for h in vminsert_Node_array %}{% if loop.index0>0 %},{% endif %}{{h}}{{vmselectAddr}}{% endfor %}'
+vmalert_to_manager: "{% for q in groups['alertmanager'] %}  --notifier.url=http://{{q}}:{{alertmanagers_port}}{% endfor %}"
+vmauth_select_node: |
+  {% for host in groups['vmselect'] %}
+      - http://{{host}}{{vmselect_Listen}}
+  {% endfor %}
+
+keepalived_array: "{{ groups['keepalived']}}"
+keepalived_unicastpeer1: |
+  {% for host in groups['keepalived'] |difference([inventory_hostname]) %}
+      {{host}}
+  {% endfor %}
+keepalived_unicastpeer: "{{ keepalived_unicastpeer1 | regex_replace('\n+$') }}"
+
+vm_consul_Count: "{{ groups['consul'] | map('extract', hostvars, ['crole']) | select('defined') | select('search', 'server') | list | length }}"
+consul_server_ip: "{{ groups['consul'] | map('extract', hostvars) | selectattr('crole', 'contains', 'server') | map(attribute='inventory_hostname') | first }}"
+consul_client_ip: "{{ groups['consul'] | map('extract', hostvars) | selectattr('crole', 'contains', 'client') | map(attribute='inventory_hostname') | first }}"
+alertmanager_count: "{{ groups['alertmanager']|length }}"
+promealert_count: "{{ groups['promealert']|length }}"
+vmauth_count: "{{ groups['vmauth']|length }}"
+
+#telegraf
+vmagent_array: "{{ groups['vmagent']}}"
+telegraf_output_vmagent: '{% for h in vmagent_array %}{% if loop.index0>0 %},{% endif %}"http://{{h}}{{vmagent_Listen}}"{% endfor %}'
+grafana_array: "{{ groups['grafana'] }}"
+telegrafa_monit_grafana: '{% for h in grafana_array %}{% if loop.index0>0 %},{% endif %}"http://{{h}}:3000"{% endfor %}'
+promealert_array: "{{ groups['promealert'] }}"
+telegrafa_monit_promealert: '{% for h in promealert_array %}{% if loop.index0>0 %},{% endif %}"http://{{h}}:{{PA_PORT}}"{% endfor %}'
+alertmanager_array: "{{ groups['alertmanager'] }}"
+telegrafa_monit_alertmanager: '{% for h in alertmanager_array %}{% if loop.index0>0 %},{% endif %}"http://{{h}}:{{alertmanagers_port}}"{% endfor %}'

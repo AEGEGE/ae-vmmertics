@@ -1,0 +1,8 @@
+- hosts: blackbox-exporter
+  gather_facts: no
+  vars:
+    ansible_ssh_pass: "{{server_password}}"
+    install_type: "{{ ins_type }}"
+  roles:
+  - { role: docker, when: "ins_type=='install'" }
+  - blackbox-exporter

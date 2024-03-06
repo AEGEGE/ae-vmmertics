@@ -1,0 +1,26 @@
+cluster.name: {{es_cluster_name}}
+node.name: {{inventory_hostname}}
+network.host: 0.0.0.0
+http.cors.enabled: true
+http.cors.allow-origin: "*"
+xpack.security.authc.api_key.enabled: true
+xpack.security.enabled: true
+xpack.security.audit.enabled: {{xpack_security_audit_enabled}}
+xpack.security.transport.ssl.enabled: true
+xpack.security.transport.ssl.verification_mode: certificate
+xpack.security.transport.ssl.key: sslkey/{{SERVER_PRIVATEKEY}}
+xpack.security.transport.ssl.certificate: sslkey/{{SERVER_CRT}}
+xpack.security.transport.ssl.certificate_authorities: sslkey/{{ROOT_CA_CERT}}
+xpack.security.http.ssl.enabled: {{xpack_security_http_ssl_enabled}}
+xpack.security.http.ssl.verification_mode: certificate
+xpack.security.http.ssl.key: sslkey/{{SERVER_PRIVATEKEY}}
+xpack.security.http.ssl.certificate: sslkey/{{SERVER_CRT}}
+xpack.security.http.ssl.certificate_authorities: sslkey/{{ROOT_CA_CERT}}
+
+indices.memory.index_buffer_size: {{indices_memory_index_buffer_size}}
+indices.memory.min_index_buffer_size: {{indices_memory_min_index_buffer_size}}
+thread_pool.write.queue_size: {{thread_pool_write_queue_size}}
+indices.fielddata.cache.size: {{indices_fielddata_cache_size}}
+indices.query.bool.max_clause_count: {{indices_query_bool_max_clause_count}}
+cluster.max_shards_per_node: {{cluster_max_shards_per_node}}
+ingest.geoip.downloader.enabled: {{ingest_geoip_downloader_enabled}}

@@ -1,0 +1,71 @@
+- name: prepare some dirs
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: 0755
+    group: 1001
+    owner: 1001
+  with_items:
+  - "{{ work_dir }}"
+  - "{{ work_dir +'/conf' }}"
+  - "{{ work_dir +'/data' }}"
+  when: install_type == "install" and node_name != "consul-client"
+
+- name: prepare some dirs
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: 0755
+    group: 1001
+    owner: 1001
+  with_items:
+  - "{{ second_work_dir }}"
+  - "{{ second_work_dir +'/conf' }}"
+  - "{{ second_work_dir +'/data' }}"
+  when: install_type == "install" and node_name == "consul-client"
+
+- name: tar files
+  copy:
+    dest: "{{work_dir}}/{{item}}"
+    src: "{{pkg_dir}}/{{item}}"
+  with_items:
+  - "consul.tgz"
+  when: install_type == "install" and node_name != "consul-client"
+
+- name: tar files
+  copy:
+    dest: "{{second_work_dir}}/{{item}}"
+    src: "{{pkg_dir}}/{{item}}"
+  with_items:
+  - "consul.tgz"
+  when: install_type == "install" and node_name == "consul-client"
+
+- name: template start script
+  template:
+    dest: "{{work_dir}}/init.sh"
+    src: "{{conf_dir}}/init.sh.j2"
+  when: install_type == "install" and node_name != "consul-client"
+
+- name: template start script
+  template:
+    dest: "{{second_work_dir}}/init.sh"
+    src: "{{conf_dir}}/init.sh.j2"
+  when: install_type == "install" and node_name == "consul-client"
+
+- name: "start"
+  shell: "bash {{work_dir}}/init.sh"
+  when: install_type == "install" and node_name != "consul-client"
+
+- name: "start"
+  shell: "bash {{second_work_dir}}/init.sh"
+  when: install_type == "install" and node_name == "consul-client"
+
+- name: stop all {{node_name}}
+  shell: "docker rm -f {{node_name}}"
+  ignore_errors: true
+  when: install_type == "delete"
+
+- name: clean all {{service_name}} data
+  shell: "rm -rf {{ work_dir }}"
+  ignore_errors: true
+  when: install_type == "delete"

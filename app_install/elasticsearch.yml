@@ -1,0 +1,8 @@
+- hosts: elasticsearch
+  gather_facts: no
+  vars:
+    ansible_ssh_pass: "{{server_password}}"
+    install_type: "{{ ins }}"
+  roles:
+  - elasticsearch
+  - { role: kibana, when: "init is defined and kibana is defined and kibana=='true' and ins_type=='install'" }
