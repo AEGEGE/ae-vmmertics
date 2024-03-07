@@ -429,7 +429,7 @@ etcd_hosts_entries=[{{etcd_hosts_lines}}]
 etcd_token="etcd-qvpgn5g"
 
 #postgresql
-#详细参数可参考https://hub.docker.com/repository/docker/congcong126/patroni-postgres/general
+#详细参数可参考https://hub.docker.com/r/congcong126/patroni-postgres
 PATRONI_SCOPE=ae
 #PG_MODE为pgsql运行模式，分为单机版single和集群版patroni
 PG_MODE=patroni
