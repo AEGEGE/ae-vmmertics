@@ -22,7 +22,7 @@ if [ ! -n "$1" ]; then
 fi
 
 grep "SELINUX=enforcing" /etc/selinux/config
-if [ "$?" == "0" ]
+if [ "$?" -eq "0" ]
 then
 sed -i "s/SELINUX=enforcing/SELINUX=disabled/g" /etc/selinux/config
 /usr/sbin/setenforce 0
@@ -30,7 +30,7 @@ fi
 
 cd `dirname $0`
 which docker >/dev/nul 2>&1
-if [ "$?" != "0" ]
+if [ "$?" -ne "0" ]
 then
     export PATH=$PATH:/opt/docker_bin/
     docker_bip=`grep docker_bip $1 |awk -F'=' '{print $2}'`
@@ -89,7 +89,7 @@ cat > docker_common/daemon.json << EOF
 EOF
     
     which /opt/docker_bin/docker >/dev/nul 2>&1
-    if [ "$?" != "0" ]
+    if [ "$?" -ne "0" ]
     then
       echo "install docker binaries"
       bash docker_common/install_docker.sh
@@ -105,7 +105,7 @@ EOF
     fi
     
     /opt/docker_bin/docker -H unix:///opt/docker_bin/run/docker.sock  image ls |grep ansible >/dev/nul 2>&1
-    if [ "$?" != "0" ]
+    if [ "$?" -ne "0" ]
     then
     echo "load ansible docker"
     /opt/docker_bin/docker -H unix:///opt/docker_bin/run/docker.sock load -i pkg/ansible.tar.xz
@@ -114,7 +114,7 @@ EOF
     cp -r shell/no_docker/*.sh ./
 else
     docker image ls |grep ansible >/dev/nul 2>&1
-    if [ "$?" != "0" ]
+    if [ "$?" -ne "0" ]
     then
     echo "load ansible docker"
     docker load -i pkg/ansible.tar.xz
